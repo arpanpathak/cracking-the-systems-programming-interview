@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-1c11a0bb.js";
+            window.path_to_searchindex_js = "searchindex-56dbb937.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -442,7 +442,7 @@ make serve      # the browser edition at http://localhost:3000
 <li><a href="#34-how-a-hashmap-finds-a-key">3.4 How a <code>HashMap</code> finds a key</a></li>
 <li><a href="#35-finding-two-numbers-that-add-up-to-a-target">3.5 Finding two numbers that add up to a target</a>
 <ul>
-<li><a href="#351-the-first-repeated-and-the-first-unique-character">3.5.1 The first repeated and the first unique character</a></li>
+<li><a href="#351-first-repeating-and-first-non-repeating-character">3.5.1 First repeating and first non-repeating character</a></li>
 </ul>
 </li>
 <li><a href="#36-a-vector-used-as-a-stack">3.6 A vector used as a stack</a>
@@ -459,7 +459,7 @@ make serve      # the browser edition at http://localhost:3000
 </li>
 <li><a href="#38-a-window-that-slides-along-a-string">3.8 A window that slides along a string</a>
 <ul>
-<li><a href="#381-the-largest-value-in-every-window">3.8.1 The largest value in every window</a></li>
+<li><a href="#381-sliding-window-maximum">3.8.1 Sliding window maximum</a></li>
 </ul>
 </li>
 <li><a href="#39-sort-then-walk-once-merging-ranges">3.9 Sort, then walk once: merging ranges</a></li>
@@ -469,9 +469,9 @@ make serve      # the browser edition at http://localhost:3000
 </ul>
 </li>
 <li><a href="#311-rotating-a-square-grid-in-place">3.11 Rotating a square grid in place</a></li>
-<li><a href="#312-finding-text-inside-text">3.12 Finding text inside text</a>
+<li><a href="#312-finding-text-inside-text-with-kmp">3.12 Finding text inside text with KMP</a>
 <ul>
-<li><a href="#3121-the-search-written-as-one-match">3.12.1 The search written as one <code>match</code></a></li>
+<li><a href="#3121-kmp-written-with-match">3.12.1 KMP written with <code>match</code></a></li>
 </ul>
 </li>
 <li><a href="#313-the-complete-files">3.13 The complete files</a></li>
@@ -882,8 +882,9 @@ make serve      # the browser edition at http://localhost:3000
 </li>
 <li><a href="#178-a-lock-free-queue-for-many-producers-and-consumers">17.8 A lock-free queue for many producers and consumers</a>
 <ul>
-<li><a href="#1781-a-sequence-number-in-every-slot">17.8.1 A sequence number in every slot</a></li>
-<li><a href="#1782-push-and-pop">17.8.2 Push and pop</a></li>
+<li><a href="#1781-the-idea">17.8.1 The idea</a></li>
+<li><a href="#1782-the-type">17.8.2 The type</a></li>
+<li><a href="#1783-push-and-pop">17.8.3 Push and pop</a></li>
 </ul>
 </li>
 <li><a href="#179-the-complete-files">17.9 The complete files</a></li>
@@ -2585,11 +2586,25 @@ mod tests {
 <p><strong>WARNING:</strong> Computing <code>target - num</code> in <code>i32</code> can overflow near the bounds of <code>i32</code> (for example, when <code>num == i32::MIN</code> and <code>target &gt; 0</code>), causing a panic in debug builds. Widening to <code>i64</code> or calling <code>target.checked_sub(num)</code> eliminates overflow.</p>
 </div>
 
-<h3 id="351-the-first-repeated-and-the-first-unique-character"><a class="header" href="#351-the-first-repeated-and-the-first-unique-character">3.5.1 The first repeated and the first unique character</a></h3>
-<p><strong>The problem.</strong> For a string, we want the first character that appears a second time, and the first character that appears exactly once. Each answer comes with its index. In <code>"swiss"</code>, the <code>s</code> at index 3 is the first repeat, and the <code>w</code> at index 1 is the first unique character.</p>
-<p><strong>The first repeat.</strong> We scan the string once and insert every character into a <code>HashSet&lt;char&gt;</code>. <code>HashSet::insert</code> returns <code>false</code> when the set already holds a value. Our first <code>false</code> therefore marks the answer, at the index where that character appears a second time. The scan takes O(n) expected time.</p>
-<p><strong>The first unique character.</strong> A single pass cannot decide this answer. In <code>"swiss"</code>, the <code>s</code> at index 0 looks unique until the scan reaches index 3. We therefore count every character in a <code>HashMap&lt;char, usize&gt;</code> first. A second scan then returns the first character whose count is 1. Both passes together still take O(n) expected time, and the map holds one entry per distinct character.</p>
-<p class="listing"><b>Listing 3.2</b> The first repeated and the first unique character, with a test. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/first_non_repeating_char.rs">src/bin/first_non_repeating_char.rs</a></p>
+<h3 id="351-first-repeating-and-first-non-repeating-character"><a class="header" href="#351-first-repeating-and-first-non-repeating-character">3.5.1 First repeating and first non-repeating character</a></h3>
+<p><strong>The problem.</strong> Given a string, find the first character that appears a second time, and the first character that appears exactly once. Each answer includes the character’s index. In <code>"swiss"</code>, the first repeating character is the <code>s</code> at index 3, and the first non-repeating character is the <code>w</code> at index 1.</p>
+<p><strong>The baseline approach.</strong> For each character, we could scan the rest of the string for another copy of it. Every character then costs up to <code>n</code> comparisons, so the search takes O(n²) time.</p>
+<p><strong>The first repeating character.</strong> We scan the string once and remember every character we have seen in a <code>HashSet&lt;char&gt;</code>. The method <code>HashSet::insert</code> returns <code>true</code> when the value is new and <code>false</code> when the set already holds it. The first <code>false</code> from <code>insert</code> therefore marks the answer. Its index is where that character appears for the second time. The trace for <code>"swiss"</code> shows each step.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Index</th><th>Character</th><th><code>insert</code> returns</th><th>Set afterward</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td><code>s</code></td><td><code>true</code></td><td>{s}</td></tr>
+<tr><td>1</td><td><code>w</code></td><td><code>true</code></td><td>{s, w}</td></tr>
+<tr><td>2</td><td><code>i</code></td><td><code>true</code></td><td>{s, w, i}</td></tr>
+<tr><td>3</td><td><code>s</code></td><td><code>false</code></td><td>answer: <code>(3, 's')</code></td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>The first non-repeating character.</strong> One scan is not enough for this question. At index 0 of <code>"swiss"</code>, the <code>s</code> has not repeated yet, but a later copy at index 3 makes it repeat. We can decide whether a character is unique only after we have seen the whole string. We therefore make two passes. The first pass counts every character in a <code>HashMap&lt;char, usize&gt;</code>, which gives <code>s: 3</code>, <code>w: 1</code> and <code>i: 1</code>. The second pass walks the string again from the start and returns the first character whose count is 1. Index 0 holds <code>s</code>, with count 3, and index 1 holds <code>w</code>, with count 1, so the answer is <code>(1, 'w')</code>.</p>
+<p class="listing"><b>Listing 3.2</b> The first repeating and the first non-repeating character, with a test. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/first_non_repeating_char.rs">src/bin/first_non_repeating_char.rs</a></p>
 
 <pre><code class="language-rust">use std::collections::{HashMap, HashSet};
 
@@ -2652,7 +2667,16 @@ mod tests {
 first repeating:     Some((3, 's'))
 first non-repeating: Some((1, 'w'))
 </code></pre>
-<p>Both functions number characters with <code>chars().enumerate()</code>, so an index counts Unicode scalar values. For ASCII text, it equals the byte offset; for <code>"é!é"</code>, the repeat is at character index 2 but at byte offset 3.</p>
+<p>Key details of the implementation:</p>
+<ul>
+<li><code>s.chars().enumerate()</code> yields pairs of an index and a <code>char</code>, so both functions can return the index together with the character.</li>
+<li><code>if !seen.insert(ch)</code> both records the character and tests whether it was already present, so the first function needs one hash lookup per character.</li>
+<li><code>*counts.entry(ch).or_default() += 1</code> finds the count for <code>ch</code>, creates it with the value 0 if it is missing, and adds 1.</li>
+<li><code>counts[&amp;ch]</code> reads a count by indexing the map. Indexing panics for a missing key, but every character of <code>s</code> was counted in the first pass, so the key is always present.</li>
+<li>Both functions return <code>None</code> when no character qualifies, for example <code>first_repeating_char("abcdef")</code>, which the test checks.</li>
+</ul>
+<p>Each function runs in O(n) expected time. The set and the map hold one entry per distinct character. The extra space is therefore O(k), where <code>k</code> is the number of distinct characters.</p>
+<p>The index from <code>chars().enumerate()</code> counts characters (Unicode scalar values), not bytes. For ASCII text, both counts are the same. For <code>"é!é"</code>, the repeat is at character index 2, but at byte offset 3, because <code>é</code> takes 2 bytes in UTF-8.</p>
 <h2 id="36-a-vector-used-as-a-stack"><a class="header" href="#36-a-vector-used-as-a-stack">3.6 A vector used as a stack</a></h2>
 <p>A <strong>stack</strong> is a last-in, first-out (LIFO) sequence where insertions and removals occur exclusively at one end (the top). <code>Vec</code> serves directly as a stack: <code>push</code> appends to the top, <code>pop</code> removes and returns the top element, and <code>last</code> inspects the top without mutating the vector. All three operations run in amortized O(1) time.</p>
 <h3 id="361-checking-brackets"><a class="header" href="#361-checking-brackets">3.6.1 Checking brackets</a></h3>
@@ -3136,14 +3160,16 @@ mod tests {
 }</code></pre>
 <p>When <code>last_seen.get(&amp;ch)</code> finds an earlier index <code>previous</code>, <code>start = start.max(previous + 1)</code> advances the left boundary without ever moving it backward. The <code>.max(...)</code> guard is essential for inputs like <code>"abba"</code>: when the second <code>'a'</code> arrives at index 3, <code>'a'</code> was last seen at index 0, which already falls outside the current window starting at index 2.</p>
 <p>At each step, <code>end - start + 1</code> gives the active window length. Because both <code>start</code> and <code>end</code> advance monotonically, the algorithm runs in O(n) time. Iterating via <code>chars().enumerate()</code> counts Unicode scalar values rather than raw UTF-8 bytes, matching the problem specification.</p>
-<h3 id="381-the-largest-value-in-every-window"><a class="header" href="#381-the-largest-value-in-every-window">3.8.1 The largest value in every window</a></h3>
-<p><strong>The problem.</strong> Given a slice and a window width <code>k</code>, we want the maximum of every run of <code>k</code> consecutive values. For <code>[1, 3, -1, -3, 5, 3, 6, 7]</code> and <code>k = 3</code>, the six windows give <code>[3, 3, 5, 5, 6, 7]</code>.</p>
-<p><strong>The baseline approach.</strong> Scanning each window from scratch costs <code>k</code> comparisons per window, which is O(n × k) in total.</p>
-<p><strong>The deque approach.</strong> We keep a <code>VecDeque</code> of indexes whose values decrease from front to back. Its front therefore holds the maximum of the current window. For each new index <code>i</code> with value <code>x</code>, <code>sliding_window_max</code> does three things:</p>
+<h3 id="381-sliding-window-maximum"><a class="header" href="#381-sliding-window-maximum">3.8.1 Sliding window maximum</a></h3>
+<p><strong>The problem.</strong> Given a slice of integers and a window width <code>k</code>, return the largest value in every run of <code>k</code> consecutive values. For <code>[1, 3, -1, -3, 5, 3, 6, 7]</code> and <code>k = 3</code>, there are six windows, and their maximums are <code>[3, 3, 5, 5, 6, 7]</code>.</p>
+<p><strong>The baseline approach.</strong> We could find the maximum of each window by scanning its <code>k</code> values. With <code>n - k + 1</code> windows, this takes O(n × k) time. Most of the work repeats, because neighboring windows share <code>k - 1</code> values.</p>
+<p><strong>The deque approach.</strong> We keep a short list of candidates, the values that can still become the maximum of some window. A value stops being a candidate when a larger value arrives after it. The larger value stays in every window that the smaller one is in, and it stays longer. The smaller value can therefore never be the largest again.</p>
+<p>We store the candidates’ indexes in a <code>VecDeque</code>, a double-ended queue that adds and removes items at both ends in O(1) time. The values at those indexes decrease from front to back, so the front always holds the index of the current window’s maximum. A deque kept in sorted order in this way is called a <strong>monotonic deque</strong>.</p>
+<p>For each new index <code>i</code> with value <code>x</code>, <code>sliding_window_max</code> performs three steps:</p>
 <ol>
-<li>If the front index has left the window (<code>front + k &lt;= i</code>), it pops that index from the front.</li>
-<li>It pops indexes from the back while their values are at most <code>x</code>. The new value is larger and stays in the window longer, so those values can never be a window maximum again.</li>
-<li>It pushes <code>i</code> at the back. Once <code>i + 1 &gt;= k</code>, a full window exists, and the value at the deque’s front index is its maximum.</li>
+<li>If the index at the front has left the window, remove it from the front. The window ending at <code>i</code> covers indexes <code>i - k + 1</code> to <code>i</code>, so the front index <code>front</code> has left the window when <code>front + k &lt;= i</code>.</li>
+<li>Remove indexes from the back while their values are less than or equal to <code>x</code>. Those values are no longer candidates, for the reason given above.</li>
+<li>Add <code>i</code> at the back. Once <code>i + 1 &gt;= k</code>, the first full window is complete, and the value at the front index is the maximum of the current window.</li>
 </ol>
 <p>The trace below follows the example. The deque column lists indexes, with their values in parentheses.</p>
 <div class="table-wrapper">
@@ -3163,7 +3189,7 @@ mod tests {
 </tbody>
 </table>
 </div>
-<p>At <code>i = 4</code>, index 1 leaves from the front because the window is now indexes 2 to 4. Then 5 removes the smaller values -3 and -1 from the back.</p>
+<p>At <code>i = 1</code>, the value 3 removes index 0, because 1 is smaller and leaves the window earlier. At <code>i = 4</code>, two steps happen. First, index 1 leaves from the front, because the window is now indexes 2 to 4. After that, the value 5 removes indexes 3 and 2 from the back, because -3 and -1 are smaller.</p>
 <p class="listing"><b>Listing 3.9</b> The maximum of every window with a monotonic deque. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/sliding_window_maximum.rs">src/bin/sliding_window_maximum.rs</a></p>
 
 <pre><code class="language-rust">use std::collections::VecDeque;
@@ -3203,7 +3229,15 @@ fn main() {
 <pre><code class="language-text">$ cargo run --bin sliding_window_maximum
 [3, 3, 5, 5, 6, 7]
 </code></pre>
-<p>The front check is an <code>if</code>, not a loop. The window moves by one index per step, so only index <code>i - k</code> can expire, and every older index has already left the deque. Each index enters the deque once and leaves at most once, so the whole pass takes O(n) time. The deque holds at most <code>k</code> indexes.</p>
+<p>Key details of the implementation:</p>
+<ul>
+<li><code>dq.front().is_some_and(|&amp;f| f + k &lt;= i)</code> is <code>true</code> only when the deque is not empty and its front index has left the window.</li>
+<li>The front check is an <code>if</code>, not a loop. The window moves forward by one index per step, so at most one index can leave the window per step.</li>
+<li>The back check is a <code>while</code> loop, because one large value can remove several smaller candidates, as the value 5 does at <code>i = 4</code>.</li>
+<li><code>dq[0]</code> reads the front index. The deque is never empty at that point, because <code>i</code> was added in the step before.</li>
+<li>The comparison <code>f + k &lt;= i</code> is used instead of <code>f &lt;= i - k</code>, because <code>i - k</code> would underflow in <code>usize</code> while <code>i &lt; k</code>.</li>
+</ul>
+<p>Every index is added to the deque once and removed at most once. The whole pass therefore takes O(n) time, even though one step can remove several indexes. The deque holds at most <code>k</code> indexes, and the output holds <code>n - k + 1</code> values.</p>
 <h2 id="39-sort-then-walk-once-merging-ranges"><a class="header" href="#39-sort-then-walk-once-merging-ranges">3.9 Sort, then walk once: merging ranges</a></h2>
 <p><strong>The problem.</strong> Given a list of closed intervals such as <code>[1,3] [2,6] [8,10] [15,18]</code>, merge all overlapping intervals into disjoint ranges (<code>[1,6] [8,10] [15,18]</code>).</p>
 <p><strong>The strategy.</strong> Sort the intervals by their start coordinate, then perform a single linear pass. In sorted order, each interval either overlaps the most recently merged interval (extending its end coordinate) or starts a new disjoint interval (Figure 3.8).</p>
@@ -3458,7 +3492,7 @@ fn main() {
 [8, 5, 2]
 [9, 6, 3]
 </code></pre>
-<h2 id="312-finding-text-inside-text"><a class="header" href="#312-finding-text-inside-text">3.12 Finding text inside text</a></h2>
+<h2 id="312-finding-text-inside-text-with-kmp"><a class="header" href="#312-finding-text-inside-text-with-kmp">3.12 Finding text inside text with KMP</a></h2>
 <p><strong>The problem.</strong> Locate the first byte index where a pattern string (the <strong>needle</strong>) occurs inside a target string (the <strong>haystack</strong>).</p>
 <p><strong>The baseline approach.</strong> Trying every starting offset in the haystack and comparing the needle character by character restarts from scratch on every mismatch. For a haystack of length <code>n</code> and needle of length <code>m</code>, worst-case complexity is O(n × m).</p>
 <p><strong>The linear-time approach.</strong> When a mismatch occurs after several matching characters, those matched characters are already known to equal a prefix of the needle. If a proper suffix of the matched portion also equals a prefix of the needle, matching can resume from that prefix length without backtracking in the haystack. The Knuth-Morris-Pratt (KMP) algorithm exploits this structure to achieve O(n + m) worst-case time.</p>
@@ -3639,16 +3673,39 @@ str_str("aabaaabaaac", "aabaaac") = 4
 str_str("hello", "") = 0
 </code></pre>
 <p>The <code>-1</code> sentinel follows the classic interview specification; idiomatic Rust APIs return <code>Option&lt;usize&gt;</code> instead. For production string searching, <code>str::find</code> in the standard library also runs in linear time (using the Two-Way algorithm).</p>
-<h3 id="3121-the-search-written-as-one-match"><a class="header" href="#3121-the-search-written-as-one-match">3.12.1 The search written as one <code>match</code></a></h3>
-<p>We can also write the KMP search as a <code>match</code> on a tuple, so that each branch of the search becomes one arm. In <code>kmp_search</code>, <code>i</code> walks the haystack and <code>j</code> counts the matched needle bytes. The tuple <code>(haystack[i] == needle[j], j + 1 == needle.len(), j)</code> selects one of four arms:</p>
+<h3 id="3121-kmp-written-with-match"><a class="header" href="#3121-kmp-written-with-match">3.12.1 KMP written with <code>match</code></a></h3>
+<p>Listing 3.18 implements the same KMP algorithm in a shorter form. Each branch of the search becomes one arm of a <code>match</code>, and the function returns <code>Option&lt;usize&gt;</code> instead of the <code>-1</code> sentinel of <code>str_str</code>. The variable <code>i</code> is the position in the haystack, and <code>j</code> is the number of needle bytes matched so far.</p>
+<p><strong>Building the table.</strong> <code>build_lps</code> fills the same <code>lps</code> table as before. <code>j</code> walks the needle from index 1, and <code>len</code> is the length of the prefix that currently matches the end of <code>needle[0..j]</code>. The <code>match</code> looks at two values, whether <code>needle[j]</code> equals <code>needle[len]</code>, and whether <code>len</code> is 0:</p>
 <ol>
-<li><code>(true, true, _)</code>: the needle’s last byte matches at <code>i</code>, so the match began <code>j</code> bytes earlier, at <code>i - j</code>.</li>
-<li><code>(true, false, _)</code>: the bytes match, so both <code>i</code> and <code>j</code> advance.</li>
-<li><code>(false, _, 0)</code>: a mismatch at the needle’s first byte, so only <code>i</code> advances.</li>
-<li><code>(false, _, _)</code>: a mismatch after <code>j</code> matched bytes, so <code>j</code> falls back to <code>lps[j - 1]</code> and <code>i</code> stays.</li>
+<li><code>(true, _)</code>: the matched prefix grows by one byte. <code>len</code> increases, <code>lps[j]</code> records it, and <code>j</code> moves on.</li>
+<li><code>(false, 0)</code>: no prefix matches, so <code>lps[j]</code> is 0, and <code>j</code> moves on.</li>
+<li><code>(false, _)</code>: the current prefix cannot be extended, so <code>len</code> falls back to <code>lps[len - 1]</code>, the next shorter prefix that also matches. <code>j</code> stays, and the comparison is repeated.</li>
 </ol>
-<p>Arm 1 checks for the needle’s end before advancing, so <code>kmp_search</code> needs no separate length check after each step. <code>build_lps</code> uses the same shape, with <code>(needle[j] == needle[len], len)</code> as its tuple. The function returns <code>Option&lt;usize&gt;</code>, which replaces the <code>-1</code> sentinel of <code>str_str</code>.</p>
-<p class="listing"><b>Listing 3.18</b> KMP as a <code>match</code> on three values. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kmp_search.rs">src/bin/kmp_search.rs</a></p>
+<p>For <code>"aabaaac"</code>, the table comes out as <code>0 1 0 1 2 2 0</code>, the same values as in the table above. At <code>j = 5</code>, for example, <code>len</code> is 2, and <code>needle[5]</code> (<code>a</code>) does not equal <code>needle[2]</code> (<code>b</code>). The third arm sets <code>len</code> to <code>lps[1]</code>, which is 1. Then <code>needle[5]</code> equals <code>needle[1]</code>, and the first arm sets <code>lps[5]</code> to 2.</p>
+<p><strong>Searching.</strong> <code>kmp_search</code> first returns <code>Some(0)</code> for an empty needle, because the empty string occurs at the start of every haystack. The loop then matches on three values: whether <code>haystack[i]</code> equals <code>needle[j]</code>, whether <code>j</code> is the needle’s last index, and <code>j</code> itself. The four arms are:</p>
+<ol>
+<li><code>(true, true, _)</code>: the needle’s last byte matches at <code>i</code>. The match began <code>j</code> bytes earlier, so the function returns <code>Some(i - j)</code>.</li>
+<li><code>(true, false, _)</code>: the bytes match, but the needle is not finished, so both <code>i</code> and <code>j</code> advance.</li>
+<li><code>(false, _, 0)</code>: the bytes differ at the needle’s first byte. There is no shorter prefix to fall back to, so only <code>i</code> advances.</li>
+<li><code>(false, _, _)</code>: the bytes differ after <code>j</code> matched bytes. <code>j</code> falls back to <code>lps[j - 1]</code>, and <code>i</code> stays, so the same haystack byte is compared again.</li>
+</ol>
+<p>The first arm checks for the needle’s last byte before advancing. As a result, <code>j</code> never reaches <code>needle.len()</code>, and <code>needle[j]</code> is always a valid index.</p>
+<p>The trace below searches for <code>"aabaaac"</code> in <code>"aabaaabaaac"</code>, the example of Figure 3.12.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th><code>i</code></th><th><code>j</code></th><th><code>haystack[i]</code></th><th><code>needle[j]</code></th><th>Arm</th><th>Effect</th></tr>
+</thead>
+<tbody>
+<tr><td>0 to 5</td><td>0 to 5</td><td><code>a a b a a a</code></td><td><code>a a b a a a</code></td><td>2</td><td>six bytes match, <code>i</code> and <code>j</code> advance together</td></tr>
+<tr><td>6</td><td>6</td><td><code>b</code></td><td><code>c</code></td><td>4</td><td><code>j</code> falls back to <code>lps[5]</code> = 2</td></tr>
+<tr><td>6 to 9</td><td>2 to 5</td><td><code>b a a a</code></td><td><code>b a a a</code></td><td>2</td><td>four bytes match</td></tr>
+<tr><td>10</td><td>6</td><td><code>c</code></td><td><code>c</code></td><td>1</td><td>returns <code>Some(10 - 6)</code> = <code>Some(4)</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>At <code>i = 6</code>, the search keeps the two bytes <code>"aa"</code> that it has already matched, as Figure 3.12 shows. It never moves <code>i</code> backward.</p>
+<p class="listing"><b>Listing 3.18</b> KMP with each branch as one arm of a <code>match</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kmp_search.rs">src/bin/kmp_search.rs</a></p>
 
 <pre><code class="language-rust">fn build_lps(needle: &amp;[u8]) -&gt; Vec&lt;usize&gt; {
     let mut lps = vec![0usize; needle.len()];
@@ -3707,6 +3764,7 @@ fn main() {
 <pre><code class="language-text">$ cargo run --bin kmp_search
 Some(4)
 </code></pre>
+<p>Both versions run in O(n + m) time and use O(m) extra space for the table. Here, <code>n</code> is the haystack length and <code>m</code> is the needle length.</p>
 <h2 id="313-the-complete-files"><a class="header" href="#313-the-complete-files">3.13 The complete files</a></h2>
 <p>Listing 3.19 reproduces <code>merge_intervals.rs</code> in full, combining the excerpts from Section 3.9.</p>
 <p class="listing"><b>Listing 3.19</b> Merging overlapping intervals, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/merge_intervals.rs">src/problems/merge_intervals.rs</a></p>
@@ -3825,11 +3883,11 @@ mod tests {
 <li>A <code>String</code> enforces a UTF-8 encoding invariant over a <code>Vec&lt;u8&gt;</code>; <code>len()</code> reports byte length, whereas <code>chars()</code> decodes Unicode scalar values sequentially.</li>
 <li>A <code>HashMap&lt;K, V&gt;</code> maps keys to buckets with a randomly seeded hasher to resist collision attacks, delivering O(1) expected <code>get</code> and <code>insert</code>.</li>
 <li>Indexing visited elements in a <code>HashMap</code> reduces complement queries in Two Sum from O(n<sup>2</sup>) to O(n) expected time.</li>
-<li>A <code>HashSet</code> finds the first repeated character in one pass. The first unique character needs a count of every character, then a second pass.</li>
+<li>A <code>HashSet</code> finds the first repeating character in one pass. The first non-repeating character needs a count of every character, then a second pass.</li>
 <li>Using a <code>Vec</code> as a LIFO stack solves nested delimiter validation and O(1) minimum-element queries (<code>MinStack</code>).</li>
 <li>Converging two-pointer traversals reverse ASCII buffers in place in O(1) auxiliary space and solve Three Sum in O(n<sup>2</sup>) time after sorting.</li>
 <li>Sliding windows paired with a last-seen index map compute the longest substring without repeated characters in O(n) time.</li>
-<li>A monotonic deque of indexes gives the maximum of every window of width <code>k</code> in O(n) time.</li>
+<li>A monotonic deque of indexes gives the sliding window maximum, the largest value in every window of width <code>k</code>, in O(n) time.</li>
 <li>Sorting intervals by start coordinate permits a single O(n) pass to merge overlapping ranges, either into an output vector or in place.</li>
 <li>Binary search halves the candidate range per step in O(log n) time and extends to rotated sorted arrays by identifying which half preserves monotonic order.</li>
 <li>Knuth-Morris-Pratt (KMP) preprocesses a pattern’s prefix-suffix table (<code>lps</code>) to locate substrings in O(n + m) worst-case time without backtracking in the haystack.</li>
@@ -19935,7 +19993,7 @@ impl&lt;T&gt; PoisonMap&lt;T&gt; for Result&lt;T, PoisonError&lt;T&gt;&gt; {
     }
 }</code></pre>
 <p>Appending <code>.map_poison()?</code> to each <code>lock()</code> and <code>wait()</code> preserves the exact control flow of listing 17.4 while changing both methods to return <code>Result</code>.</p>
-<p>The complete source appears in listing 17.20 at the end of the chapter.</p>
+<p>The complete source appears in listing 17.21 at the end of the chapter.</p>
 <p>In <code>main</code>, worker threads log errors with <code>dbg!</code> and exit their loops via <code>break</code> rather than unwinding.</p>
 <p>The second unit test intentionally poisons the queue by spawning a thread that acquires the private <code>inner</code> mutex (accessible to tests within the same module) and panics before releasing it. Both <code>push</code> and <code>pop</code> must subsequently return <code>Err(QueuePoisonedError)</code>.</p>
 <pre><code class="language-text">$ cargo test --bin bounded_buffer_with_error_handling
@@ -20158,7 +20216,7 @@ impl&lt;T&gt; BoundedBuffer&lt;T&gt; {
     });
 }</code></pre>
 <p>Deriving <code>PER_CONSUMER</code> from the producer constants guarantees that total items popped equal total items pushed, allowing every thread to terminate cleanly.</p>
-<p>The complete program is included in listing 17.22 at the end of the chapter.</p>
+<p>The complete program is included in listing 17.23 at the end of the chapter.</p>
 <p>Rebinding <code>let buffer = &amp;buffer;</code> turns the local variable into a shared reference so that each <code>move</code> closure copies only the reference into its scoped thread, while <code>thread::scope</code> ensures <code>buffer</code> outlives all workers.</p>
 <pre><code class="language-text">$ cargo run --bin mpmc_bounded_buffer
 consumer 1: (3, 0)
@@ -20282,7 +20340,7 @@ pub struct BoundedQueue&lt;T&gt; {
 <video class="motion" src="figures/ch17-queue-close.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A queue with room for 2 holds 1 and 2, and the producer waits to push 3. main calls close: closed becomes true, and notify_all rings both condition variables. The producer wakes, sees closed, and push returns Err(3), handing the item back. The consumer pops 1 and 2, then pop returns None on the empty closed queue. Last, close without notify_all leaves a consumer asleep on an empty queue forever, and shutdown hangs." data-chapters="[[0.0, &quot;full&quot;], [8.22, &quot;close&quot;], [25.62, &quot;drain&quot;], [36.18, &quot;no notify_all&quot;]]"><img src="figures/ch17-queue-close.gif" alt="A queue with room for 2 holds 1 and 2, and the producer waits to push 3. main calls close: closed becomes true, and notify_all rings both condition variables. The producer wakes, sees closed, and push returns Err(3), handing the item back. The consumer pops 1 and 2, then pop returns None on the empty closed queue. Last, close without notify_all leaves a consumer asleep on an empty queue forever, and shutdown hangs."></video>
 <figcaption><b>Animation 17.3</b> <code>close</code> sets the flag and wakes every waiter. <code>push</code> hands its item back, and <code>pop</code> drains the queue before it returns <code>None</code>. A close that wakes nobody hangs the shutdown.</figcaption>
 </figure>
-<p>The complete implementation and test suite appear in listing 17.23 at the end of the chapter.</p>
+<p>The complete implementation and test suite appear in listing 17.24 at the end of the chapter.</p>
 <p>The four unit tests verify the core contract:</p>
 <ul>
 <li><code>preserves_order_across_threads</code> enqueues 0 through 999 on one thread and verifies strict FIFO delivery and clean loop termination on another after <code>close</code>.</li>
@@ -20409,7 +20467,7 @@ unsafe impl&lt;T: Send, const N: usize&gt; Sync for SpscRing&lt;T, N&gt; {}</cod
 <p><strong>WARNING:</strong> The soundness of <code>SpscRing</code> relies on an unchecked caller invariant: at most one thread may invoke <code>push</code>, and at most one thread may invoke <code>pop</code>. Because both methods accept <code>&amp;self</code> and <code>SpscRing</code> implements <code>Sync</code>, safe code can share one instance across two producers and race on the same slot, causing undefined behavior. A sound public API splits the ring into non-clonable <code>Producer</code> and <code>Consumer</code> handles taking <code>&amp;mut self</code>, enforcing the SPSC contract at compile time (Exercise 5).</p>
 </div>
 
-<p>The complete implementation and tests appear in listing 17.24 at the end of the chapter.</p>
+<p>The complete implementation and tests appear in listing 17.25 at the end of the chapter.</p>
 <p>The concurrency test transfers 50,000 sequential integers across a 256-slot ring, calling <code>thread::yield_now()</code> whenever the producer encounters a full ring or the consumer encounters an empty ring. A sentinel value (<code>u64::MAX</code>) signals completion, and the consumer verifies that every integer arrives in exact order.</p>
 <pre><code class="language-text">$ cargo test --lib problems::ring_buffer
 running 4 tests
@@ -20421,35 +20479,102 @@ test problems::ring_buffer::tests::producer_and_consumer_run_concurrently_in_ord
 test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out
 </code></pre>
 <h2 id="178-a-lock-free-queue-for-many-producers-and-consumers"><a class="header" href="#178-a-lock-free-queue-for-many-producers-and-consumers">17.8 A lock-free queue for many producers and consumers</a></h2>
-<p>The ring in Section 17.7 is correct only with one producer and one consumer, because each counter has a single writer. With two producers, both can read the same <code>tail</code>, write the same slot, and lose one of the two values. In this section, we build a bounded queue that any number of threads can push to and pop from without a mutex. The design comes from Dmitry Vyukov, who published it on his site 1024cores.net.</p>
-<h3 id="1781-a-sequence-number-in-every-slot"><a class="header" href="#1781-a-sequence-number-in-every-slot">17.8.1 A sequence number in every slot</a></h3>
-<p>Each slot holds a value and a sequence number, <code>seq</code>, which says whose turn the slot is. Slot <code>i</code> starts with <code>seq = i</code>. The counters <code>tail</code> and <code>head</code> keep growing, as in the SPSC ring. Position <code>pos</code> uses slot <code>pos &amp; mask</code>, where <code>mask</code> is the capacity minus 1. For a power-of-two capacity, <code>pos &amp; mask</code> equals <code>pos % capacity</code>.</p>
-<p>A producer that wants position <code>tail</code> reads the slot’s <code>seq</code> and compares it with <code>tail</code>:</p>
-<ul>
-<li><code>seq == tail</code>: the slot is empty and waiting for this position.</li>
-<li><code>seq &lt; tail</code>: the slot still holds the value from the previous lap, so the queue is full.</li>
-<li><code>seq &gt; tail</code>: another producer has already taken this position, so the producer reads <code>tail</code> again.</li>
-</ul>
-<p>When the slot is free, the producer claims the position with <code>compare_exchange_weak</code>. The compare-and-swap moves <code>tail</code> from <code>pos</code> to <code>pos + 1</code> only if no other producer moved it first. The winner owns the slot alone. It writes the value, then stores <code>seq = pos + 1</code> to mark the slot full.</p>
-<p>A consumer at position <code>head</code> expects <code>seq == head + 1</code>, which means a producer has filled the slot. A smaller <code>seq</code> means the queue is empty, and a larger one means another consumer took the position. After its own <code>compare_exchange_weak</code> on <code>head</code> succeeds, the consumer reads the value and stores <code>seq = head + capacity</code>. That number is the position the producer will use for this slot on the next lap.</p>
-<p>The trace below uses a capacity of 4. The last column lists <code>seq</code> for slots 0 to 3.</p>
+<p>The ring buffer in Section 17.7 is safe only with one producer thread and one consumer thread. Its correctness rests on each counter having a single writer. Only the producer changes <code>tail</code>, and only the consumer changes <code>head</code>. With two producers, both threads can load the same value of <code>tail</code>, write into the same slot, and store the same new <code>tail</code>. The second write replaces the first value, and that value never reaches a consumer.</p>
+<p>In this section, we build a bounded queue that any number of producers and consumers can share without a mutex. Such a queue is called <strong>MPMC</strong> (multiple producers, multiple consumers). We follow the design that Dmitry Vyukov published on his site 1024cores.net. The <code>ArrayQueue</code> type in the crossbeam library is based on the same design.</p>
+<h3 id="1781-the-idea"><a class="header" href="#1781-the-idea">17.8.1 The idea</a></h3>
+<p>The queue keeps the two growing counters of the SPSC ring. <code>tail</code> counts the pushes that have started, and <code>head</code> counts the pops that have started. Position <code>p</code> uses slot <code>p % capacity</code>, so the counters keep growing while the slots are reused, lap after lap.</p>
+<p>Two changes make the ring safe for many threads. First, a thread reserves a position by advancing the counter with a <strong>compare-and-swap</strong> (CAS) instead of a plain store. The call <code>compare_exchange(current, current + 1)</code> changes the counter only if it still holds <code>current</code>. When two producers load the same <code>tail</code>, only one of their CAS operations succeeds. The other producer receives the new value of <code>tail</code> and tries the next position, so each position belongs to exactly one thread.</p>
+<p>Second, reserving a position does not mean the value is written yet. In the SPSC ring, a consumer learned that a slot was full by reading <code>tail</code>. In this queue, <code>tail</code> says only that some producer has reserved the position, and that producer may still be writing. Every slot therefore carries its own counter, a <strong>sequence number</strong> called <code>seq</code>, which records the state of that slot:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th><code>seq</code> of the slot for position <code>p</code></th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>p</code></td><td>Empty, waiting for the producer of position <code>p</code></td></tr>
+<tr><td><code>p + 1</code></td><td>Full, waiting for the consumer of position <code>p</code></td></tr>
+<tr><td><code>p + capacity</code></td><td>Empty again, waiting for the producer one lap later</td></tr>
+</tbody>
+</table>
+</div>
+<p>Slot <code>i</code> starts with <code>seq = i</code>, so every slot begins empty and waits for its producer in the first lap.</p>
+<p>A producer that wants position <code>tail</code> loads the <code>seq</code> of that slot and compares it with <code>tail</code>. If <code>seq == tail</code>, the slot is empty, and the producer tries its CAS. If <code>seq &lt; tail</code>, the slot still holds a value from the previous lap that no consumer has taken yet, so the queue is full. If <code>seq &gt; tail</code>, another producer has already used this position, and the producer loads <code>tail</code> again.</p>
+<p>A consumer follows the same rules, shifted by one. It expects <code>seq == head + 1</code>, which means that the producer of this position has finished writing. A smaller <code>seq</code> means that the queue is empty, and a larger <code>seq</code> means that another consumer has already taken this position.</p>
+<p>The trace below uses a capacity of 4. Each row shows the counters and the four sequence numbers after one operation.</p>
 <div class="table-wrapper">
 <table>
 <thead>
 <tr><th>Step</th><th><code>tail</code></th><th><code>head</code></th><th><code>seq</code> of slots 0 to 3</th></tr>
 </thead>
 <tbody>
-<tr><td>start</td><td>0</td><td>0</td><td>0, 1, 2, 3</td></tr>
-<tr><td>push A into slot 0</td><td>1</td><td>0</td><td>1, 1, 2, 3</td></tr>
-<tr><td>push B into slot 1</td><td>2</td><td>0</td><td>1, 2, 2, 3</td></tr>
-<tr><td>pop A from slot 0</td><td>2</td><td>1</td><td>4, 2, 2, 3</td></tr>
+<tr><td>Start</td><td>0</td><td>0</td><td>0, 1, 2, 3</td></tr>
+<tr><td>Push A at position 0</td><td>1</td><td>0</td><td>1, 1, 2, 3</td></tr>
+<tr><td>Push B at position 1</td><td>2</td><td>0</td><td>1, 2, 2, 3</td></tr>
+<tr><td>Pop A from position 0</td><td>2</td><td>1</td><td>4, 2, 2, 3</td></tr>
 </tbody>
 </table>
 </div>
-<p>After the pop, slot 0 holds <code>seq = 4</code>, so it accepts the producer at position 4, one lap later. A producer at position 2 finds <code>seq = 2</code> in slot 2 and proceeds.</p>
-<p>The capacity must be at least 2. With one slot, a push at position 0 leaves <code>seq = 1</code>. A producer at position 1 then reads <code>seq == tail</code> and overwrites the value that no consumer has read yet. <code>new</code> therefore asserts <code>capacity &gt;= 2</code> and a power of two.</p>
-<h3 id="1782-push-and-pop"><a class="header" href="#1782-push-and-pop">17.8.2 Push and pop</a></h3>
-<p class="listing"><b>Listing 17.17</b> <code>push</code> and <code>pop</code> (lines 47 to 101). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lock_free_queue.rs">src/bin/lock_free_queue.rs</a></p>
+<p>After the pop, slot 0 holds <code>seq = 4</code>. Position 4 is the first position of the second lap, and it maps to slot 0 again, because 4 % 4 = 0. The slot now waits for that producer. Slot 2 still holds <code>seq = 2</code>, so the next push, at position 2, finds it empty.</p>
+<p>The capacity must be at least 2. With one slot, a push at position 0 stores <code>seq = 1</code>, which means “full, waiting for the consumer of position 0”. Slot 0 is also the slot for position 1, however, and a producer at position 1 reads <code>seq == tail</code> and treats the slot as empty. It then overwrites a value that no consumer has read. With two or more slots, the full state <code>p + 1</code> and the next lap’s empty state <code>p + capacity</code> are different numbers.</p>
+<p>The capacity must also be a power of two. For such a capacity, <code>p % capacity</code> equals <code>p &amp; (capacity - 1)</code>, and the queue computes the slot index with one AND instruction instead of a division.</p>
+<h3 id="1782-the-type"><a class="header" href="#1782-the-type">17.8.2 The type</a></h3>
+<p>Listing 17.17 defines a slot, the queue, and the constructor <code>new</code>.</p>
+<p class="listing"><b>Listing 17.17</b> The slot, the queue, and <code>new</code> (lines 11 to 51). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lock_free_queue.rs">src/bin/lock_free_queue.rs</a></p>
+
+<pre><code class="language-rust">struct Slot&lt;T&gt; {
+    seq: AtomicUsize,
+    data: UnsafeCell&lt;MaybeUninit&lt;T&gt;&gt;,
+}
+
+pub struct LockFreeQueue&lt;T&gt; {
+    buf: Box&lt;[Slot&lt;T&gt;]&gt;,
+    mask: usize,
+    head: AtomicUsize,
+    tail: AtomicUsize,
+}
+
+// SAFETY: Only the thread that wins the compare-and-swap for a position reads or
+// writes that slot's value, and `seq` hands the slot from the producer to the
+// consumer with Release and Acquire. Threads can therefore share the queue, as long
+// as the values themselves can move between threads (`T: Send`).
+unsafe impl&lt;T: Send&gt; Sync for LockFreeQueue&lt;T&gt; {}
+
+// SAFETY: The queue owns the values in its slots, so moving the queue to another
+// thread moves those values with it, which `T: Send` allows.
+unsafe impl&lt;T: Send&gt; Send for LockFreeQueue&lt;T&gt; {}
+
+impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
+    fn new(capacity: usize) -&gt; Self {
+        // One slot is not enough: "full" and "empty one lap later" share a seq.
+        assert!(capacity &gt;= 2 &amp;&amp; capacity.is_power_of_two());
+
+        let buf = (0..capacity)
+            .map(|i| Slot {
+                seq: AtomicUsize::new(i),
+                data: UnsafeCell::new(MaybeUninit::uninit()),
+            })
+            .collect();
+
+        Self {
+            buf,
+            mask: capacity - 1,
+            head: AtomicUsize::new(0),
+            tail: AtomicUsize::new(0),
+        }
+    }
+
+    // ...
+}</code></pre>
+<p>The type has two parts:</p>
+<ul>
+<li><code>Slot&lt;T&gt;</code> pairs the sequence number with storage for one value. As in the SPSC ring, the storage is an <code>UnsafeCell&lt;MaybeUninit&lt;T&gt;&gt;</code>. We need <code>MaybeUninit</code> because an empty slot holds no valid <code>T</code>. We need <code>UnsafeCell</code> because a thread writes into the slot through the shared reference <code>&amp;self</code>.</li>
+<li><code>LockFreeQueue&lt;T&gt;</code> keeps the slots in a <code>Box&lt;[Slot&lt;T&gt;]&gt;</code>, a heap array whose length is fixed when the queue is created. The field <code>mask</code> holds <code>capacity - 1</code>, and <code>push</code> and <code>pop</code> turn a position into a slot index with <code>position &amp; mask</code>. The fields <code>head</code> and <code>tail</code> are the two growing counters.</li>
+</ul>
+<p>The two <code>unsafe impl</code> lines declare that threads may share the queue and move it. The compiler cannot prove this on its own. A type that contains an <code>UnsafeCell</code> allows writes through <code>&amp;self</code>. The compiler cannot see what stops two threads from writing to the same cell at once. In this queue, the CAS on <code>head</code> or <code>tail</code> stops it, because each position belongs to one thread. The <code>// SAFETY:</code> comment above each <code>unsafe impl</code> states that argument, so that a reader can check it against the code. The bound <code>T: Send</code> is required because a value pushed on one thread is popped on another.</p>
+<p><code>new</code> checks the capacity with <code>assert!</code>, for the reasons given in Section 17.8.1. It then builds the slot array with <code>map</code> and <code>collect</code>, giving slot <code>i</code> the sequence number <code>i</code>, and it starts both counters at 0.</p>
+<h3 id="1783-push-and-pop"><a class="header" href="#1783-push-and-pop">17.8.3 Push and pop</a></h3>
+<p>Listing 17.18 shows the two operations. They have the same shape, so we explain <code>push</code> in full and then the differences in <code>pop</code>.</p>
+<p class="listing"><b>Listing 17.18</b> <code>push</code> and <code>pop</code> (lines 53 to 115).</p>
 
 <pre><code class="language-rust">impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
     // ...
@@ -20475,6 +20600,10 @@ test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out
         }
 
         let slot = &amp;self.buf[tail &amp; self.mask];
+
+        // SAFETY: The compare-and-swap gave this thread position `tail`, and
+        // `seq == tail` showed that the slot is empty. No other thread uses the slot
+        // until the store to `seq` below.
         unsafe { (*slot.data.get()).write(value) };
         slot.seq.store(tail + 1, Release); // full, ready for a consumer
 
@@ -20503,23 +20632,36 @@ test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out
         }
 
         let slot = &amp;self.buf[head &amp; self.mask];
+
+        // SAFETY: The compare-and-swap gave this thread position `head`, and
+        // `seq == head + 1` showed that a producer wrote the value. The Acquire load
+        // of `seq` makes that write visible here, and the value is read only once.
         let value = unsafe { (*slot.data.get()).assume_init_read() };
         slot.seq.store(head + self.mask + 1, Release); // empty, ready for the next lap
 
         Some(value)
     }
 }</code></pre>
-<p>Both loops have the same shape. Two guard clauses return or retry. The <code>match</code> on <code>compare_exchange_weak</code> then breaks out with the claimed position, or retries with the value that another thread wrote. The <code>_weak</code> form may fail even when the values match, which is harmless inside a retry loop and cheaper on some processors.</p>
-<p>The compare-and-swap uses <code>Relaxed</code> ordering because it only decides which thread owns a position. Visibility of the value comes from the slot’s <code>seq</code>, as in Section 17.7. The producer writes the value and then stores <code>seq</code> with <code>Release</code>. The other side loads <code>seq</code> with <code>Acquire</code> before it reads or overwrites the slot.</p>
-<p>Each slot is an <code>UnsafeCell&lt;MaybeUninit&lt;T&gt;&gt;</code>, as in the SPSC ring, because an empty slot holds no valid <code>T</code>. For the same reason, <code>Drop</code> pops the remaining values so that each one is dropped.</p>
-<p>The queue has one limit that a mutex-based queue does not show. Suppose a producer stops after its compare-and-swap and before it stores <code>seq</code>. Consumers then see that slot as empty until the producer resumes, even when later slots are full. Vyukov notes that the queue is therefore not lock-free in the formal sense, although it uses no mutex.</p>
-<p>The <code>main</code> function starts two producers that each push 1 to 1000, and two consumers that each pop 1000 values. A lost or duplicated value would change the sum, which must be 2 × 500,500 = 1,001,000.</p>
+<p><code>push</code> works in two phases. In the first phase, the loop reserves a position. It starts from the current <code>tail</code> and loads the <code>seq</code> of that position’s slot. Two guard clauses handle the cases from Section 17.8.1:</p>
+<ul>
+<li>If <code>seq &lt; tail</code>, the queue is full. <code>push</code> returns <code>Err(value)</code>, so the caller keeps ownership of the value and can try again later.</li>
+<li>If <code>seq &gt; tail</code>, another producer has already used this position. <code>push</code> loads a fresh <code>tail</code> and starts the loop again.</li>
+</ul>
+<p>When neither guard applies, the slot is empty, and <code>push</code> tries to advance <code>tail</code> from <code>tail</code> to <code>tail + 1</code>. If the CAS succeeds, the position belongs to this thread, and <code>break</code> ends the loop. If the CAS fails, another producer advanced <code>tail</code> first. In that case, <code>compare_exchange_weak</code> returns the value that it found, and the loop tries again with that position.</p>
+<p>In the second phase, the thread owns the slot. It writes the value with <code>MaybeUninit::write</code> and then stores <code>seq = tail + 1</code>, which marks the slot full for the consumer of this position. The <code>// SAFETY:</code> comment above the write explains why no other thread can use the slot at the same time.</p>
+<p><code>pop</code> follows the same two phases on <code>head</code>. Its loop expects <code>seq == head + 1</code> and returns <code>None</code> when the slot has not been filled yet. After its CAS succeeds, <code>pop</code> moves the value out of the slot with <code>assume_init_read</code>. It then stores <code>seq = head + capacity</code>, written as <code>head + self.mask + 1</code>, which hands the slot to the producer one lap later.</p>
+<p>The CAS operations use <code>Relaxed</code> ordering, because they decide only which thread owns a position and do not publish any data. The value itself is published through the slot’s <code>seq</code>. The producer writes the value before its <code>Release</code> store to <code>seq</code>, and the consumer loads <code>seq</code> with <code>Acquire</code> before reading the value. As in Section 17.7, a consumer that sees the new <code>seq</code> is therefore guaranteed to see the value that the producer wrote before it. The same pairing protects the next lap. The producer’s <code>Acquire</code> load of <code>seq</code> pairs with the consumer’s <code>Release</code> store. The consumer has therefore finished reading the old value before the producer overwrites the slot.</p>
+<p>The <code>_weak</code> form of compare-and-swap may fail even when the counter holds the expected value. Some processors, such as older ARM cores, build a CAS from a pair of instructions that can fail for unrelated reasons. The weak form reports such a failure instead of retrying internally. Inside our retry loop, such a failure costs one more iteration.</p>
+<p><code>MaybeUninit&lt;T&gt;</code> never runs a destructor, so values still in the queue would leak when the queue is dropped. The <code>Drop</code> implementation therefore pops every remaining value with <code>while self.pop().is_some() {}</code>, and each popped value is dropped normally. <code>drop</code> takes <code>&amp;mut self</code>, so no other thread can use the queue at that point.</p>
+<p>This queue has one property that a mutex-based queue does not have. Suppose that the operating system suspends a producer after its CAS and before its store to <code>seq</code>. Consumers then treat that slot as empty, and <code>pop</code> returns <code>None</code> even when later slots are full. The other threads cannot finish the suspended producer’s write, so they wait until the operating system runs that producer again. For this reason, Vyukov notes that the queue is not lock-free in the formal sense, although it uses no lock.</p>
+<p>The <code>main</code> function tests the queue with four threads inside a <code>thread::scope</code>. Two producers each push the values 1 to 1000, and they call <code>thread::yield_now</code> while the queue is full. Two consumers each pop 1000 values, yield while the queue is empty, and add every value to a shared <code>AtomicU64</code>. Each producer pushes a total of 1000 × 1001 / 2 = 500,500, so the expected sum is 2 × 500,500 = 1,001,000. A lost value, or a value popped twice, would change the sum.</p>
 <pre><code class="language-text">$ cargo run --release --bin lock_free_queue
 sum = 1001000
 </code></pre>
+<p>The complete program appears in listing 17.26 at the end of the chapter.</p>
 <h2 id="179-the-complete-files"><a class="header" href="#179-the-complete-files">17.9 The complete files</a></h2>
 <p>Each complete source file appears below in the order introduced in this chapter.</p>
-<p class="listing"><b>Listing 17.18</b> The shared queue and its <code>main</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_safe_queue.rs">src/bin/thread_safe_queue.rs</a></p>
+<p class="listing"><b>Listing 17.19</b> The shared queue and its <code>main</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_safe_queue.rs">src/bin/thread_safe_queue.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     collections::VecDeque,
@@ -20577,7 +20719,7 @@ fn main() {
     producer.join().unwrap();
     consumer.join().unwrap();
 }</code></pre>
-<p class="listing"><b>Listing 17.19</b> The bounded buffer and its <code>main</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer.rs">src/bin/bounded_buffer.rs</a></p>
+<p class="listing"><b>Listing 17.20</b> The bounded buffer and its <code>main</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer.rs">src/bin/bounded_buffer.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     collections::VecDeque,
@@ -20729,7 +20871,7 @@ fn main() {
     }
     println!("done");
 }</code></pre>
-<p class="listing"><b>Listing 17.20</b> The bounded buffer with a custom error type, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs">src/bin/bounded_buffer_with_error_handling.rs</a></p>
+<p class="listing"><b>Listing 17.21</b> The bounded buffer with a custom error type, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs">src/bin/bounded_buffer_with_error_handling.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     collections::VecDeque,
@@ -20916,7 +21058,7 @@ mod tests {
         }
     }
 }</code></pre>
-<p class="listing"><b>Listing 17.21</b> The bounded buffer with a boxed error. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
+<p class="listing"><b>Listing 17.22</b> The bounded buffer with a boxed error. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     collections::VecDeque,
@@ -21029,7 +21171,7 @@ fn main() -&gt; Result&lt;(), RuntimeError&gt; {
     println!("done");
     Ok(())
 }</code></pre>
-<p class="listing"><b>Listing 17.22</b> Many producers and consumers with <code>wait_while</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mpmc_bounded_buffer.rs">src/bin/mpmc_bounded_buffer.rs</a></p>
+<p class="listing"><b>Listing 17.23</b> Many producers and consumers with <code>wait_while</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mpmc_bounded_buffer.rs">src/bin/mpmc_bounded_buffer.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     collections::VecDeque,
@@ -21114,7 +21256,7 @@ fn main() {
         }
     });
 }</code></pre>
-<p class="listing"><b>Listing 17.23</b> The closable bounded queue, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bounded_queue.rs">src/problems/bounded_queue.rs</a></p>
+<p class="listing"><b>Listing 17.24</b> The closable bounded queue, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bounded_queue.rs">src/problems/bounded_queue.rs</a></p>
 
 <pre><code class="language-rust">//! Bounded blocking queue with backpressure.
 //!
@@ -21366,7 +21508,7 @@ mod tests {
         );
     }
 }</code></pre>
-<p class="listing"><b>Listing 17.24</b> The SPSC ring buffer, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/ring_buffer.rs">src/problems/ring_buffer.rs</a></p>
+<p class="listing"><b>Listing 17.25</b> The SPSC ring buffer, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/ring_buffer.rs">src/problems/ring_buffer.rs</a></p>
 
 <pre><code class="language-rust">//! Lock-free single-producer / single-consumer (SPSC) ring buffer.
 //!
@@ -21608,7 +21750,7 @@ mod tests {
         assert_eq!(dropped.load(Ordering::SeqCst), 3);
     }
 }</code></pre>
-<p class="listing"><b>Listing 17.25</b> The lock-free queue for many producers and consumers. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lock_free_queue.rs">src/bin/lock_free_queue.rs</a></p>
+<p class="listing"><b>Listing 17.26</b> The lock-free queue for many producers and consumers. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lock_free_queue.rs">src/bin/lock_free_queue.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     cell::UnsafeCell,
@@ -21632,8 +21774,14 @@ pub struct LockFreeQueue&lt;T&gt; {
     tail: AtomicUsize,
 }
 
+// SAFETY: Only the thread that wins the compare-and-swap for a position reads or
+// writes that slot's value, and `seq` hands the slot from the producer to the
+// consumer with Release and Acquire. Threads can therefore share the queue, as long
+// as the values themselves can move between threads (`T: Send`).
 unsafe impl&lt;T: Send&gt; Sync for LockFreeQueue&lt;T&gt; {}
 
+// SAFETY: The queue owns the values in its slots, so moving the queue to another
+// thread moves those values with it, which `T: Send` allows.
 unsafe impl&lt;T: Send&gt; Send for LockFreeQueue&lt;T&gt; {}
 
 impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
@@ -21678,6 +21826,10 @@ impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
         }
 
         let slot = &amp;self.buf[tail &amp; self.mask];
+
+        // SAFETY: The compare-and-swap gave this thread position `tail`, and
+        // `seq == tail` showed that the slot is empty. No other thread uses the slot
+        // until the store to `seq` below.
         unsafe { (*slot.data.get()).write(value) };
         slot.seq.store(tail + 1, Release); // full, ready for a consumer
 
@@ -21706,6 +21858,10 @@ impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
         }
 
         let slot = &amp;self.buf[head &amp; self.mask];
+
+        // SAFETY: The compare-and-swap gave this thread position `head`, and
+        // `seq == head + 1` showed that a producer wrote the value. The Acquire load
+        // of `seq` makes that write visible here, and the value is read only once.
         let value = unsafe { (*slot.data.get()).assume_init_read() };
         slot.seq.store(head + self.mask + 1, Release); // empty, ready for the next lap
 
@@ -34220,7 +34376,7 @@ mod tests {
 <tr><td><code>parallel_sum</code>: scoped threads</td><td>12</td><td>chapter 16, <code>threads::parallel_sum</code>, listing 16.5</td></tr>
 <tr><td><code>SpinLock</code> and <code>SpinGuard</code></td><td>45</td><td>chapter 16, listing 16.12</td></tr>
 <tr><td><code>Semaphore</code></td><td>36</td><td>chapter 16, listing 16.15</td></tr>
-<tr><td><code>BlockingQueue</code> with <code>close</code></td><td>62</td><td>chapter 17, listing 17.23</td></tr>
+<tr><td><code>BlockingQueue</code> with <code>close</code></td><td>62</td><td>chapter 17, listing 17.24</td></tr>
 <tr><td><code>ThreadPool</code> with <code>Drop</code></td><td>45</td><td>chapter 18, listing 18.7</td></tr>
 <tr><td><code>retry</code> with backoff</td><td>21</td><td>chapter 19, listing 19.9</td></tr>
 <tr><td><code>HashRing</code></td><td>33</td><td>chapter 14, listing 14.9</td></tr>
@@ -34230,10 +34386,18 @@ mod tests {
 </table>
 </div>
 <h2 id="302-queens-on-a-bitboard"><a class="header" href="#302-queens-on-a-bitboard">30.2 Queens on a bitboard</a></h2>
-<p><strong>The problem.</strong> We place queens on an 8 × 8 board so that no two queens attack each other. We also move a queen along a legal line without breaking that rule. Placing eight such queens is the eight queens puzzle, which the chess composer Max Bezzel published in 1848.</p>
-<p><strong>The bitboard.</strong> A queen at row <code>x</code> and column <code>y</code> controls four lines: row <code>x</code>, column <code>y</code>, the diagonal <code>x + 7 - y</code> and the anti-diagonal <code>x + y</code>. The board has 8 rows and 8 columns, so each fits in a <code>u8</code> with one bit per line. It has 15 diagonals in each direction, numbered 0 to 14, so each direction fits in a <code>u16</code>. A queen at (1, 2) sets bit 1 of <code>rows</code>, bit 2 of <code>cols</code>, bit 6 of <code>diags</code> and bit 3 of <code>anti_diags</code>. A square is free when none of its four bits is set. Checking a square therefore takes four AND operations, however many queens the board holds.</p>
-<p><strong>Moving a queen.</strong> <code>Queen::can_move</code> accepts a move along a row, a column or a diagonal: <code>dx == 0</code>, <code>dy == 0</code> or <code>dx == dy</code>. Every legal destination therefore lies on one of the queen’s own lines, and <code>place</code> would reject it while those lines are still marked. <code>move_piece</code> first lifts the queen with <code>remove</code>, which clears its four bits, and then places it at the destination. If <code>place</code> fails, <code>move_piece</code> restores the copy of the board that it saved before the move. <code>Chess</code> holds two <code>u8</code> and two <code>u16</code> fields, 6 bytes in all, and derives <code>Copy</code>, so saving the board copies 6 bytes.</p>
-<p>The same check also stops a queen from jumping over another one. A queen standing between the start and the destination lies on the line of the move. That line passes through the destination, so <code>place</code> rejects the move.</p>
+<p><strong>The problem.</strong> We place queens on an 8 × 8 chessboard so that no queen attacks another. We also move a queen to a new square along a legal queen move. A queen attacks every square in its row, in its column, and on its two diagonals. Placing eight queens under this rule is the eight queens puzzle, which the chess composer Max Bezzel published in 1848.</p>
+<p><strong>The baseline approach.</strong> We could store the board as an 8 × 8 array of booleans. To test whether a square is safe, we would walk along its row, its column and both of its diagonals. That walk visits up to 27 squares for every test.</p>
+<p><strong>The bitboard approach.</strong> Instead of storing squares, we store lines. A queen at row <code>x</code> and column <code>y</code> sits on exactly four lines: one row, one column, one diagonal, and one anti-diagonal. We keep one bit for every line on the board and set that bit when a queen occupies the line. A square is safe exactly when none of its four lines has its bit set. A board that stores its state in the bits of integers is called a <strong>bitboard</strong>.</p>
+<p>Each kind of line needs a number, so that the line can be mapped to a bit:</p>
+<ul>
+<li>The board has 8 rows and 8 columns. Row <code>x</code> is bit <code>x</code> of <code>rows</code>, and column <code>y</code> is bit <code>y</code> of <code>cols</code>, so each fits in a <code>u8</code>.</li>
+<li>All squares on one diagonal have the same difference <code>x - y</code>, which ranges from -7 to 7. Adding 7 gives the bit number <code>x + 7 - y</code>, from 0 to 14, so <code>diags</code> needs a <code>u16</code>.</li>
+<li>All squares on one anti-diagonal have the same sum <code>x + y</code>, which ranges from 0 to 14, so <code>anti_diags</code> is also a <code>u16</code>.</li>
+</ul>
+<p>For example, a queen at (1, 2) sets bit 1 of <code>rows</code> and bit 2 of <code>cols</code>. It also sets bit 1 + 7 - 2 = 6 of <code>diags</code> and bit 1 + 2 = 3 of <code>anti_diags</code>. Testing a square then takes four AND operations, however many queens the board holds, and the whole board fits in 6 bytes.</p>
+<p><strong>Moving a queen.</strong> <code>Queen::can_move</code> accepts a move along a row (<code>dx == 0</code>), along a column (<code>dy == 0</code>), or along a diagonal (<code>dx == dy</code>). Every legal destination therefore lies on one of the queen’s own lines. Those lines still have their bits set while the queen stands on its old square. If <code>move_piece</code> called <code>place(to)</code> directly, <code>place</code> would find the queen’s own bits and reject every legal move.</p>
+<p><code>move_piece</code> therefore lifts the queen off the board first. It calls <code>remove(from)</code>, which clears the queen’s four bits, and then calls <code>place(to)</code>. If another queen attacks the destination, <code>place</code> returns an error, and the queen must go back to its old square. <code>move_piece</code> handles that case with a saved copy of the board. It saves the copy with <code>let before = *self;</code> before it removes the queen, and it restores the copy when <code>place</code> fails. <code>Chess</code> derives <code>Copy</code>, and the copy is only 6 bytes.</p>
 <p class="listing"><b>Listing 30.2</b> Non-attacking queens on a bitboard. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/chess.rs">src/bin/chess.rs</a></p>
 
 <pre><code class="language-rust">#[derive(Debug)]
@@ -34351,7 +34515,14 @@ fn main() -&gt; Res {
 moved the queen from (0, 0) to (2, 2)
 place (5, 5): Err(Occupied)
 </code></pre>
-<p>The second line shows a rejected square. The queen at (2, 2) is on diagonal 2 + 7 - 2 = 7. Square (5, 5) is on diagonal 5 + 7 - 5 = 7 as well.</p>
+<p>Key details of the implementation:</p>
+<ul>
+<li><code>place</code> first returns <code>Err(Error::OutOfBounds)</code> for a square outside the board, before it builds any bit. A shift such as <code>1u8 &lt;&lt; 9</code> would overflow the <code>u8</code>.</li>
+<li><code>place</code> builds one mask for each line, such as <code>1u8 &lt;&lt; cell.x</code> for the row. A bitwise AND of a mask with its field is nonzero when that line is taken, and a bitwise OR sets the bit.</li>
+<li><code>remove</code> clears each bit with <code>&amp;= !mask</code>. The <code>!</code> operator flips every bit of the mask, so the AND keeps every other bit unchanged.</li>
+<li><code>abs_diff</code> returns the distance between two <code>usize</code> values without underflow, which is why <code>can_move</code> can compare <code>dx</code> and <code>dy</code> directly.</li>
+</ul>
+<p>The program places a queen at (0, 0) and moves it along the diagonal to (2, 2). It then tries to place a second queen at (5, 5). Both squares lie on diagonal 7, because 2 + 7 - 2 = 7 and 5 + 7 - 5 = 7. The square (5, 5) is therefore attacked, and <code>place</code> returns <code>Err(Occupied)</code>.</p>
 <h2 id="303-what-the-short-forms-leave-out"><a class="header" href="#303-what-the-short-forms-leave-out">30.3 What the short forms leave out</a></h2>
 <p>Omitting secondary features is acceptable under interview time constraints only when the author can articulate every omitted invariant and its production consequence during follow-up questioning.</p>
 <p><strong>Test-and-set versus test-and-test-and-set in <code>SpinLock</code>.</strong> The drill spins via <code>while self.locked.swap(true, Acquire) { spin_loop() }</code>, executing an atomic read-modify-write on every iteration. Under multicore contention, every spinning core repeatedly invalidates the lock’s cache line across the interconnect (cache-line bouncing). The reference implementation in Chapter 16 uses <code>compare_exchange_weak</code> guarded by an inner <code>Relaxed</code> load loop, allowing waiting cores to spin on a shared read-only cache line until release. Both preserve mutual exclusion, but only the reference scales under contention. The drill also omits explicit <code>// SAFETY:</code> invariant documentation required in production reviews.</p>

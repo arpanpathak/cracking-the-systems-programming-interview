@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-1c11a0bb.js";
+            window.path_to_searchindex_js = "searchindex-56dbb937.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -728,7 +728,7 @@ mod tests {
 <tr><td><code>parallel_sum</code>: scoped threads</td><td>12</td><td>chapter 16, <code>threads::parallel_sum</code>, listing 16.5</td></tr>
 <tr><td><code>SpinLock</code> and <code>SpinGuard</code></td><td>45</td><td>chapter 16, listing 16.12</td></tr>
 <tr><td><code>Semaphore</code></td><td>36</td><td>chapter 16, listing 16.15</td></tr>
-<tr><td><code>BlockingQueue</code> with <code>close</code></td><td>62</td><td>chapter 17, listing 17.23</td></tr>
+<tr><td><code>BlockingQueue</code> with <code>close</code></td><td>62</td><td>chapter 17, listing 17.24</td></tr>
 <tr><td><code>ThreadPool</code> with <code>Drop</code></td><td>45</td><td>chapter 18, listing 18.7</td></tr>
 <tr><td><code>retry</code> with backoff</td><td>21</td><td>chapter 19, listing 19.9</td></tr>
 <tr><td><code>HashRing</code></td><td>33</td><td>chapter 14, listing 14.9</td></tr>
@@ -738,10 +738,18 @@ mod tests {
 </table>
 </div>
 <h2 id="302-queens-on-a-bitboard"><a class="header" href="#302-queens-on-a-bitboard">30.2 Queens on a bitboard</a></h2>
-<p><strong>The problem.</strong> We place queens on an 8 × 8 board so that no two queens attack each other. We also move a queen along a legal line without breaking that rule. Placing eight such queens is the eight queens puzzle, which the chess composer Max Bezzel published in 1848.</p>
-<p><strong>The bitboard.</strong> A queen at row <code>x</code> and column <code>y</code> controls four lines: row <code>x</code>, column <code>y</code>, the diagonal <code>x + 7 - y</code> and the anti-diagonal <code>x + y</code>. The board has 8 rows and 8 columns, so each fits in a <code>u8</code> with one bit per line. It has 15 diagonals in each direction, numbered 0 to 14, so each direction fits in a <code>u16</code>. A queen at (1, 2) sets bit 1 of <code>rows</code>, bit 2 of <code>cols</code>, bit 6 of <code>diags</code> and bit 3 of <code>anti_diags</code>. A square is free when none of its four bits is set. Checking a square therefore takes four AND operations, however many queens the board holds.</p>
-<p><strong>Moving a queen.</strong> <code>Queen::can_move</code> accepts a move along a row, a column or a diagonal: <code>dx == 0</code>, <code>dy == 0</code> or <code>dx == dy</code>. Every legal destination therefore lies on one of the queen’s own lines, and <code>place</code> would reject it while those lines are still marked. <code>move_piece</code> first lifts the queen with <code>remove</code>, which clears its four bits, and then places it at the destination. If <code>place</code> fails, <code>move_piece</code> restores the copy of the board that it saved before the move. <code>Chess</code> holds two <code>u8</code> and two <code>u16</code> fields, 6 bytes in all, and derives <code>Copy</code>, so saving the board copies 6 bytes.</p>
-<p>The same check also stops a queen from jumping over another one. A queen standing between the start and the destination lies on the line of the move. That line passes through the destination, so <code>place</code> rejects the move.</p>
+<p><strong>The problem.</strong> We place queens on an 8 × 8 chessboard so that no queen attacks another. We also move a queen to a new square along a legal queen move. A queen attacks every square in its row, in its column, and on its two diagonals. Placing eight queens under this rule is the eight queens puzzle, which the chess composer Max Bezzel published in 1848.</p>
+<p><strong>The baseline approach.</strong> We could store the board as an 8 × 8 array of booleans. To test whether a square is safe, we would walk along its row, its column and both of its diagonals. That walk visits up to 27 squares for every test.</p>
+<p><strong>The bitboard approach.</strong> Instead of storing squares, we store lines. A queen at row <code>x</code> and column <code>y</code> sits on exactly four lines: one row, one column, one diagonal, and one anti-diagonal. We keep one bit for every line on the board and set that bit when a queen occupies the line. A square is safe exactly when none of its four lines has its bit set. A board that stores its state in the bits of integers is called a <strong>bitboard</strong>.</p>
+<p>Each kind of line needs a number, so that the line can be mapped to a bit:</p>
+<ul>
+<li>The board has 8 rows and 8 columns. Row <code>x</code> is bit <code>x</code> of <code>rows</code>, and column <code>y</code> is bit <code>y</code> of <code>cols</code>, so each fits in a <code>u8</code>.</li>
+<li>All squares on one diagonal have the same difference <code>x - y</code>, which ranges from -7 to 7. Adding 7 gives the bit number <code>x + 7 - y</code>, from 0 to 14, so <code>diags</code> needs a <code>u16</code>.</li>
+<li>All squares on one anti-diagonal have the same sum <code>x + y</code>, which ranges from 0 to 14, so <code>anti_diags</code> is also a <code>u16</code>.</li>
+</ul>
+<p>For example, a queen at (1, 2) sets bit 1 of <code>rows</code> and bit 2 of <code>cols</code>. It also sets bit 1 + 7 - 2 = 6 of <code>diags</code> and bit 1 + 2 = 3 of <code>anti_diags</code>. Testing a square then takes four AND operations, however many queens the board holds, and the whole board fits in 6 bytes.</p>
+<p><strong>Moving a queen.</strong> <code>Queen::can_move</code> accepts a move along a row (<code>dx == 0</code>), along a column (<code>dy == 0</code>), or along a diagonal (<code>dx == dy</code>). Every legal destination therefore lies on one of the queen’s own lines. Those lines still have their bits set while the queen stands on its old square. If <code>move_piece</code> called <code>place(to)</code> directly, <code>place</code> would find the queen’s own bits and reject every legal move.</p>
+<p><code>move_piece</code> therefore lifts the queen off the board first. It calls <code>remove(from)</code>, which clears the queen’s four bits, and then calls <code>place(to)</code>. If another queen attacks the destination, <code>place</code> returns an error, and the queen must go back to its old square. <code>move_piece</code> handles that case with a saved copy of the board. It saves the copy with <code>let before = *self;</code> before it removes the queen, and it restores the copy when <code>place</code> fails. <code>Chess</code> derives <code>Copy</code>, and the copy is only 6 bytes.</p>
 <p class="listing"><b>Listing 30.2</b> Non-attacking queens on a bitboard. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/chess.rs">src/bin/chess.rs</a></p>
 
 <pre><code class="language-rust">#[derive(Debug)]
@@ -859,7 +867,14 @@ fn main() -&gt; Res {
 moved the queen from (0, 0) to (2, 2)
 place (5, 5): Err(Occupied)
 </code></pre>
-<p>The second line shows a rejected square. The queen at (2, 2) is on diagonal 2 + 7 - 2 = 7. Square (5, 5) is on diagonal 5 + 7 - 5 = 7 as well.</p>
+<p>Key details of the implementation:</p>
+<ul>
+<li><code>place</code> first returns <code>Err(Error::OutOfBounds)</code> for a square outside the board, before it builds any bit. A shift such as <code>1u8 &lt;&lt; 9</code> would overflow the <code>u8</code>.</li>
+<li><code>place</code> builds one mask for each line, such as <code>1u8 &lt;&lt; cell.x</code> for the row. A bitwise AND of a mask with its field is nonzero when that line is taken, and a bitwise OR sets the bit.</li>
+<li><code>remove</code> clears each bit with <code>&amp;= !mask</code>. The <code>!</code> operator flips every bit of the mask, so the AND keeps every other bit unchanged.</li>
+<li><code>abs_diff</code> returns the distance between two <code>usize</code> values without underflow, which is why <code>can_move</code> can compare <code>dx</code> and <code>dy</code> directly.</li>
+</ul>
+<p>The program places a queen at (0, 0) and moves it along the diagonal to (2, 2). It then tries to place a second queen at (5, 5). Both squares lie on diagonal 7, because 2 + 7 - 2 = 7 and 5 + 7 - 5 = 7. The square (5, 5) is therefore attacked, and <code>place</code> returns <code>Err(Occupied)</code>.</p>
 <h2 id="303-what-the-short-forms-leave-out"><a class="header" href="#303-what-the-short-forms-leave-out">30.3 What the short forms leave out</a></h2>
 <p>Omitting secondary features is acceptable under interview time constraints only when the author can articulate every omitted invariant and its production consequence during follow-up questioning.</p>
 <p><strong>Test-and-set versus test-and-test-and-set in <code>SpinLock</code>.</strong> The drill spins via <code>while self.locked.swap(true, Acquire) { spin_loop() }</code>, executing an atomic read-modify-write on every iteration. Under multicore contention, every spinning core repeatedly invalidates the lock’s cache line across the interconnect (cache-line bouncing). The reference implementation in Chapter 16 uses <code>compare_exchange_weak</code> guarded by an inner <code>Relaxed</code> load loop, allowing waiting cores to spin on a shared read-only cache line until release. Both preserve mutual exclusion, but only the reference scales under contention. The drill also omits explicit <code>// SAFETY:</code> invariant documentation required in production reviews.</p>
