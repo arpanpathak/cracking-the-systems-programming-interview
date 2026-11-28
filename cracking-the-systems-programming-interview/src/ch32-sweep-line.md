@@ -6,49 +6,49 @@
 
 This chapter covers
 
-- Reducing a geometric problem to a sequence of events sorted by coordinate
-- Keeping the active set in a `BTreeMap` used as an ordered multiset, when a `BinaryHeap` cannot remove an arbitrary element
-- Ordering events at the same coordinate so that no false key point is emitted
-- The skyline problem, traced event by event, in O(n log n) time
+- Reducing a geometric problem to a sorted sequence of coordinate events
+- Maintaining an active set in a `BTreeMap` multiset when `BinaryHeap` cannot remove arbitrary elements
+- Ordering tied events at the same coordinate to prevent false key points
+- Solving the skyline problem in O(n log n) time with an event-by-event trace
 
 </div>
 
-In many problems about intervals, rectangles and segments, 1 question is posed at every point of a line. Examples are which intervals cover a coordinate, which rectangle is tallest there, and which segments cross. In a direct solution, the question is evaluated at every coordinate of interest against every object, at a cost of O(n²) for n objects. With a **sweep line**, this cost is reduced. An imaginary vertical line is moved from left to right and stopped only where the answer can change. Each stop is called an **event**, and the objects crossed by the line between 2 events form the **active set**.
+Many geometric problems over intervals, rectangles, and line segments pose a query at every coordinate along an axis: which intervals cover a point, which rectangle stands tallest there, or which segments intersect. Evaluating that query directly at every coordinate against all `n` objects costs O(n²). A **sweep line** lowers that cost by moving an imaginary vertical line from left to right and stopping only at coordinates where the answer can change. Each stop is an **event**, and the objects currently crossing the line form the **active set**.
 
-Michael Shamos and Dan Hoey applied the technique to the detection of intersecting line segments in 1976, and Jon Bentley and Thomas Ottmann extended it to report every intersection in 1979. It has been a standard method of computational geometry since then. In this chapter, we develop a sweep line for the skyline problem, and we choose the data structure for the active set from the operations required by the sweep.
+Michael Shamos and Dan Hoey introduced the sweep-line method for segment-intersection detection in 1976, and Jon Bentley and Thomas Ottmann generalized it in 1979 to report all intersections. It has remained a standard technique in computational geometry ever since. This chapter applies a sweep line to the skyline problem and derives the active-set data structure directly from the operations the sweep demands.
 
 ## 32.1 The skyline problem
 
-**The problem.** A city is described by rectangular buildings that stand on a common ground line. Each building is given as `[left, right, height]`, with `left < right` and `height > 0`. The **skyline** is the outline that the buildings form when the city is viewed from a distance. It is reported as a list of **key points** `[x, height]`. A key point is emitted at every x-coordinate where the height of the outline changes. For the 5 buildings `[2, 9, 10]`, `[3, 7, 15]`, `[5, 12, 12]`, `[15, 20, 10]` and `[19, 24, 8]`, the skyline consists of 7 key points: `[2, 10]`, `[3, 15]`, `[7, 12]`, `[12, 0]`, `[15, 10]`, `[20, 8]` and `[24, 0]` (figure 32.1).
+**The problem.** Rectangular buildings stand along a shared ground line, each given as `[left, right, height]` with `left < right` and `height > 0`. The **skyline** is the outer silhouette formed by the union of those buildings, reported as a sequence of **key points** `[x, height]`. The algorithm emits a key point at every x-coordinate where the silhouette's height changes. For the five buildings `[2, 9, 10]`, `[3, 7, 15]`, `[5, 12, 12]`, `[15, 20, 10]`, and `[19, 24, 8]`, the skyline consists of seven key points: `[2, 10]`, `[3, 15]`, `[7, 12]`, `[12, 0]`, `[15, 10]`, `[20, 8]`, and `[24, 0]` (Figure 32.1).
 
 <figure>
 <img src="figures/ch32-skyline.svg" alt="Five shaded buildings on an x axis from 0 to 25: [2, 9, 10], [3, 7, 15], [5, 12, 12], [15, 20, 10] and [19, 24, 8]. A thick outline follows the tallest building at every x. Seven key points are marked on the outline: [2, 10], [3, 15], [7, 12], [12, 0], [15, 10], [20, 8] and [24, 0].">
 <figcaption><b>Figure 32.1</b> 5 buildings and their skyline. A key point marks every change in the height of the outline.</figcaption>
 </figure>
 
-**The baseline approach.** At a coordinate `x`, the outline's height equals the maximum height among all buildings that cover `x`. In a direct method, this maximum is evaluated at each of the 2n building edges by a scan over all n buildings. Each evaluation costs O(n), and the whole computation costs O(n²).
+**The baseline approach.** At any coordinate `x`, the skyline height equals the maximum height among all buildings covering `x`. Evaluating that maximum at each of the `2n` building edges by scanning all `n` buildings costs O(n) per edge and O(n²) overall.
 
-**The sweep-line approach.** The height of the outline can change only at a building edge, so the 2n edges are the events of the sweep. At a left edge, 1 height is added to the active set, and at a right edge, 1 height is removed. After each edge, the maximum of the active set is the outline's height to the right of that edge. A key point is emitted only when this maximum differs from its previous value.
+**The sweep-line approach.** Because the silhouette height can change only at a building's left or right edge, the `2n` edges serve as the sweep events. A left edge inserts a building's height into the active set, and a right edge removes it. After processing each edge, the maximum of the active set gives the skyline height immediately to the right of that coordinate. Whenever that maximum differs from the previous height, the algorithm emits a key point.
 
 ## 32.2 An ordered multiset of active heights
 
-3 operations on the active set are required: insertion of a height, removal of 1 specific height, and retrieval of the maximum. Insertion and retrieval of the maximum are supported by `BinaryHeap` from chapter 5, but no operation for the removal of an arbitrary element is provided. The active set is therefore stored in a `BTreeMap<i32, i32>` used as a **multiset**, a set in which an element can occur more than once. Each key is a height, and its value is the number of active buildings of that height. The counts are required because 2 active buildings can have equal heights. At the right edge of 1 of these buildings, the other must remain in the set.
+The active set must support three operations: inserting a height, removing a specific height, and querying the maximum. `BinaryHeap` (chapter 5) handles insertion and maximum queries in O(log n) and O(1) time, but it cannot remove an arbitrary element. We therefore store the active set in a `BTreeMap<i32, i32>` acting as a **multiset**, a collection that allows duplicate elements. Each key is a building height, and its value tracks how many active buildings share that height. Reference counts prevent premature deletion when two overlapping buildings have the same height: ending one building decrements the count while keeping the height active for the other.
 
-In a `BTreeMap`, keys are stored in sorted order in a B-tree. Insertion and removal take O(log n) time, and the largest key is obtained with `keys().next_back()` in O(log n) time. The map is initialized with the entry `(0, 1)`, which represents the ground. This entry is never removed, so the map is never empty, and the outline's height is 0 after the right edge of the last building in a group.
+`BTreeMap` maintains its keys in sorted order inside a B-tree, supporting insertion, removal, and maximum lookup (`keys().next_back()`) in O(log n) time. Initializing the map with `(0, 1)` represents the ground level. Because this sentinel entry is never removed, the map never empties, and the maximum naturally drops to `0` when the last building in a cluster ends.
 
 ## 32.3 Events at the same coordinate
 
-2 events are created for each building, `(left, Event::Start(Reverse(height)))` and `(right, Event::End(height))`, and the events are sorted as tuples. Events at different coordinates are ordered by `x`. Ties at the same coordinate are decided by the derived `Ord` implementation of `Event`. Under 3 of its rules, no key point outside the skyline is emitted:
+Each building generates two events, `(left, Event::Start(Reverse(height)))` and `(right, Event::End(height))`, which the algorithm sorts as tuples. Tuples with distinct coordinates order by `x`. When multiple events share the same `x`, the derived `Ord` implementation on `Event` breaks ties using three rules that suppress spurious key points:
 
-1. Variants are compared in declaration order, so every `Start` precedes every `End` at the same `x`. When the right edge of 1 building coincides with the left edge of another building of equal height, the start is processed first. The maximum is never reduced, and no key point `[x, 0]` is emitted between the 2 buildings.
-2. 2 `Start` events are compared by their `Reverse(height)` values, so the taller building is processed first. The taller height is the maximum from the first start onward, the maximum is unchanged by the shorter start, and 1 key point is emitted where 2 would be emitted otherwise.
-3. 2 `End` events are compared by plain heights, so the shorter building is removed first. The maximum is changed only by the removal of the taller building, and again 1 key point is emitted.
+1. **Starts precede ends.** Derived `Ord` compares enum variants in declaration order, placing every `Start` before every `End` at the same `x`. When one building ends where another of equal height begins, processing the start first keeps the maximum unchanged and avoids emitting a false `[x, 0]` dip between them.
+2. **Taller starts come first.** Comparing `Start` events by `Reverse(height)` processes the tallest starting building first. Its height becomes the maximum immediately, shorter starts at the same `x` leave that maximum unchanged, and the sweep emits one key point instead of several rising steps.
+3. **Shorter ends come first.** Comparing `End` events by plain `height` removes shorter ending buildings first. The maximum changes only when the tallest building leaves, again emitting a single key point.
 
-The result for the buildings `[0, 5, 10]` and `[5, 8, 10]` depends on rule 1. If the end at `x = 5` were processed first, the maximum would be reduced to 0 and raised back to 10, and the false key points `[5, 0]` and `[5, 10]` would be emitted between 2 buildings that form 1 flat roof.
+Consider the adjacent buildings `[0, 5, 10]` and `[5, 8, 10]`, which form one continuous flat roof of height 10. Rule 1 ensures the start at `x = 5` runs before the end. If the end ran first, the active maximum would drop to `0` and immediately climb back to `10`, emitting two false key points: `[5, 0]` and `[5, 10]`.
 
 ## 32.4 A trace
 
-The 10 events of the 5 buildings in figure 32.1 are processed in the order below. After each event, the active heights are listed in sorted order, and a key point is emitted whenever the maximum changes.
+The table below traces all 10 events for the five buildings in Figure 32.1. After each event, it lists the active heights in ascending order and records a key point whenever the maximum changes:
 
 | `x` | Event | Active heights | Maximum | Key point |
 |---|---|---|---|---|
@@ -63,7 +63,7 @@ The 10 events of the 5 buildings in figure 32.1 are processed in the order below
 | 20 | `End(10)` | 0, 8 | 8 | `[20, 8]` |
 | 24 | `End(8)` | 0 | 0 | `[24, 0]` |
 
-At `x = 5`, the building of height 12 becomes active, but the building of height 15 still covers that coordinate, so no key point is emitted. From `x = 7`, the right edge of the building of height 15, the outline's height is 12.
+At `x = 5`, the building of height 12 enters the active set, but the taller building of height 15 still covers that coordinate, so the maximum stays 15 and no key point is emitted. At `x = 7`, removing height 15 exposes height 12 as the new maximum and emits `[7, 12]`.
 
 ## 32.5 The program
 
@@ -78,30 +78,30 @@ $ cargo run --bin skyline_problem
 [[2, 10], [3, 15], [7, 12], [12, 0], [15, 10], [20, 8], [24, 0]]
 ```
 
-Key details of the implementation:
+Key implementation details:
 
-- In `flat_map`, each building is expanded into an array of 2 events, so `events` holds exactly 2n entries.
-- `sort_unstable` is sufficient, although equal elements may be reordered by it. 2 events that compare equal have the same coordinate, variant and height, so the result does not depend on their relative order.
-- In the `End` arm, a mutable reference to the count of `h` is obtained with `entry(h).or_default()`, and the count is decremented. When the count reaches 0, the key is removed, so the height of an ended building is never returned by `next_back`. An equivalent formulation with `get_mut` and `is_some_and` is given in the commented block.
-- The condition `if let Some(&curr_max) = active.keys().next_back() && curr_max != prev_max` is a **let chain**, stabilized in Rust 1.88 for the 2024 edition. The comparison is evaluated only when the pattern matches, and the binding `curr_max` is in scope for it.
+- `flat_map` expands each building into a two-element array of events, populating `events` with exactly `2n` entries.
+- `sort_unstable` suffices even though it may reorder equal elements: two equal events share the same coordinate, variant, and height, so their relative order cannot affect the output.
+- In the `End` arm, `active.entry(h).or_default()` returns a mutable reference to the count of `h`, which the code decrements. Once the count reaches `0`, `active.remove(&h)` deletes the key so `next_back()` never observes an expired height. The commented block shows an equivalent version using `get_mut` and `is_some_and`.
+- The condition `if let Some(&curr_max) = active.keys().next_back() && curr_max != prev_max` uses a **let chain**, stabilized in Rust 1.88 for the 2024 edition. It evaluates `curr_max != prev_max` only when the pattern matches, keeping `curr_max` in scope for the comparison.
 
-**Complexity.** The 2n events are sorted in O(n log n) time. For each event, 1 update of the B-tree and 1 lookup of the maximum are then performed, each in O(log n) time. The total running time is O(n log n), and the events and the map occupy O(n) space.
+**Complexity.** Sorting the `2n` events takes O(n log n) time. Each event then performs one B-tree update and one maximum lookup, each in O(log n) time. Total runtime is O(n log n), and the event vector and active map consume O(n) space.
 
 <div class="summary" markdown="1">
 
 ## Summary
 
-- A sweep line is moved across the plane and stopped only at events, the coordinates where the answer can change. Between 2 events, the active set is constant.
-- For the skyline, the events are the 2n building edges. The outline's height after an event is the maximum of the active heights, and a key point is emitted only when that maximum changes.
-- The removal of a specific height is required for the active set and is not available in `BinaryHeap`. In a `BTreeMap` of height counts, insertion, removal and retrieval of the maximum take O(log n) time, and because of the ground entry `(0, 1)`, the map is never empty.
-- Ties at 1 coordinate are ordered by the derived `Ord` of `Event`: starts before ends, taller starts first, shorter ends first. Under each rule, 1 kind of false key point is avoided.
-- The running time of the whole sweep is O(n log n), and its space is O(n).
+- A sweep line moves across the plane and stops only at events where the answer can change; between consecutive events, the active set stays constant.
+- For the skyline problem, the `2n` building edges form the events. After each event, the active set's maximum gives the skyline height, and any change in that maximum produces a key point.
+- Removing an arbitrary height rules out a plain `BinaryHeap`. A `BTreeMap` of height counts supports insertion, removal, and maximum queries in O(log n) time, while the ground sentinel `(0, 1)` keeps the map non-empty.
+- The derived `Ord` on `Event` resolves ties at the same coordinate: starts before ends, taller starts first, and shorter ends first, preventing false key points in each case.
+- The complete sweep runs in O(n log n) time and O(n) space.
 
 </div>
 
 ## Exercises
 
-1. Replace the `BTreeMap` in `get_skyline` with a `BinaryHeap<i32>` and lazy deletion: record each ended height in a `HashMap<i32, i32>`, and pop the heap while its top is recorded there. Check that the 7 key points of section 32.4 are unchanged.
-2. Reverse the declaration order of `Start` and `End` in `Event`, and run the program on the buildings `[0, 5, 10]` and `[5, 8, 10]`. Explain each false key point that appears.
-3. Use a sweep line to compute the maximum number of meetings that overlap at any moment, given each meeting as `[start, end)`. Decide whether an end at `x` must be processed before or after a start at the same `x`.
-4. Compute the total area covered by the buildings of figure 32.1, counting overlapping parts once, by summing the outline's height times the width between consecutive key points.
+1. Replace the `BTreeMap` in `get_skyline` with a `BinaryHeap<i32>` and lazy deletion: track ended heights in a `HashMap<i32, i32>` and pop stale entries from the heap's top before reading the maximum. Verify that the seven key points in section 32.4 match.
+2. Swap the declaration order of `Start` and `End` in `Event` and run the program on `[0, 5, 10]` and `[5, 8, 10]`. Explain each false key point that appears.
+3. Use a sweep line to compute the maximum number of overlapping meetings given intervals `[start, end)`. Determine whether an end at `x` should sort before or after a start at the same `x`.
+4. Compute the total union area of the buildings in Figure 32.1 by summing each outline height times the width between consecutive key points.

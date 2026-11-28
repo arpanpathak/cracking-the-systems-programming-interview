@@ -1109,15 +1109,13 @@ The operating system kernel intercepts the trap and resolves the fault according
 
 ## 19.13 The Priority Job Scheduler
 
-Job scheduling by policy is a frequent systems interview problem, because the scheduling theory of Chapter 5 is combined in it with the data structures and lock discipline of this chapter. In this section, the scheduler is derived in 2 stages. In the first stage, jobs are dispatched on 1 logical CPU with a time quantum. In the second stage, the same jobs are executed on several worker threads that share one heap.
+Implementing a policy-driven job scheduler is a staple systems engineering interview problem because it unifies the scheduling theory of Chapter 5 with the data structures and lock discipline developed in this chapter. This section derives the scheduler in two stages: first as a single-CPU logical dispatcher with quantum-based preemption, and then as a concurrent worker pool operating over a shared priority heap.
 
 ### 19.13.1 Policy as a Priority Key
 
-In Listing 5-1, each classical policy is implemented as a separate routine with its own data structure. A FIFO queue is used for FCFS and round-robin, and the jobs are sorted by burst length for SJF. In production dispatchers, the two concerns are separated differently. Every runnable entity is stored in a single ordered runqueue, and the policy is expressed entirely as the **sort key** of that runqueue. The entity with the smallest key is always selected. In Linux CFS, this design is followed with `vruntime` as the key of its red-black tree (Section 5.3.2). The same principle is applied below to the three policies of Section 5.2, with a binary min-heap as the runqueue.
+Listing 5-1 implements each classical scheduling policy as an independent routine backed by its own data structure: FCFS and round-robin use a FIFO queue, while SJF sorts jobs by burst length. Production dispatchers invert that organization. A single ordered runqueue holds every runnable entity, and the scheduling policy reduces to the **sort key** governing that runqueue. The dispatcher always selects the entity with the smallest key. Linux CFS follows this architecture using `vruntime` as the key of its red-black tree (Section 5.3.2). The design below applies the same principle to the three policies of Section 5.2 using a binary min-heap as the runqueue.
 
-
-
-Each runqueue entry is the 4-tuple `(rank, queued at, index, time left)`. Tuples are compared lexicographically, so the rank is compared first, and ties are broken by the queued-at time, the logical clock value at which the entry was inserted. Among entries of equal rank, the entry that has waited longest is therefore dispatched first, and any remaining tie is resolved deterministically by the job index. The remaining burst and the static priority of a job are mapped to its rank by the ranking function:
+Each runqueue entry is a 4-tuple `(rank, queued_at, index, time_left)`. Lexicographical tuple comparison orders entries primarily by `rank` and breaks ties by `queued_at` (the logical clock value when the entry entered the heap), ensuring that among equal-rank entries the longest-waiting job dispatches first. The job `index` breaks any remaining tie deterministically. A ranking function maps each job's remaining burst and static priority to its rank:
 
 | Policy | Rank | Resulting discipline under a quantum `q` |
 | :--- | :--- | :--- |
@@ -1125,17 +1123,17 @@ Each runqueue entry is the 4-tuple `(rank, queued at, index, time left)`. Tuples
 | SJF | remaining burst | Shortest Remaining Time First (SRTF) |
 | Priority | static priority (smaller is more urgent) | Strict priority, with round-robin among jobs of equal priority |
 
-The FCFS row is justified by a short argument. Under a constant rank, the heap order is the order of queued-at times. A preempted job is reinserted with the current clock as its queued-at time. This value exceeds the queued-at time of every waiting job, so the preempted job is placed at the tail of the queue. This behavior is exactly the round-robin rotation of Section 5.2.
+The FCFS row merits a brief verification. Under a constant rank of `0`, heap ordering reduces strictly to `queued_at`. Reinserting a preempted job with the current clock assigns it a timestamp greater than that of every waiting job, placing it at the tail of the runqueue. That behavior matches the round-robin rotation of Section 5.2 exactly.
 
 ### 19.13.2 The Dispatch Loop and Quantum Expiration
 
-3 steps are repeated until the runqueue is empty:
+The dispatcher repeats three steps until the runqueue empties:
 
-1. **Selection.** The entry with the smallest tuple is removed from the heap in O(log n) time.
-2. **Execution.** If the remaining burst exceeds the quantum, the job is run for exactly `q` units, and the logical clock is advanced by `q`. Otherwise, the job is run to completion, and the clock is advanced by the remaining burst.
-3. **Preemption.** A job with work remaining is reinserted with its rank recomputed from the new remaining burst and with the current clock as its queued-at time. This step corresponds to the timer interrupt at the end of a quantum (Section 5.1).
+1. **Selection:** Pop the entry with the smallest tuple from the heap in O(log n) time.
+2. **Execution:** If the remaining burst exceeds the quantum `q`, execute the job for `q` units and advance the logical clock by `q`. Otherwise, run the job to completion and advance the clock by its remaining burst.
+3. **Preemption:** If work remains, recompute the job's rank from its updated remaining burst and reinsert it with the current clock as `queued_at`. This step models the hardware timer interrupt that terminates an execution quantum (Section 5.1).
 
-The workload consists of 4 jobs, all ready at time 0: a (burst 5, priority 2), b (burst 2, priority 3), c (burst 3, priority 1) and d (burst 4, priority 1), with `q = 2`. The resulting schedules are shown in Figure 19-7. Under SRTF, job c is preempted at time 4 with 1 unit remaining. Its recomputed rank of 1 is the smallest in the runqueue, so c is dispatched again immediately and is completed at time 5.
+Consider a static workload of four jobs arriving at time 0: `a` (burst 5, priority 2), `b` (burst 2, priority 3), `c` (burst 3, priority 1), and `d` (burst 4, priority 1), scheduled with `q = 2`. Figure 19-7 plots the resulting schedules. Under SRTF, job `c` is preempted at time 4 with 1 unit remaining; because its recomputed rank of 1 is the smallest key in the runqueue, the dispatcher immediately selects `c` again, and `c` finishes at time 5.
 
 <figure>
 <img src="figures/ch19_quantum_gantt.svg" alt="Three Gantt charts from time 0 to 14 with quantum 2. FCFS round-robin runs a, b, c, d, a, c, d, a with mean turnaround 10.5. SJF as SRTF runs b, c, c, d, d, a, a, a with mean turnaround 7.5. Priority runs c, d, c, d, a, a, a, b with mean turnaround 9.5."/>
@@ -1147,7 +1145,7 @@ The workload consists of 4 jobs, all ready at time 0: a (burst 5, priority 2), b
 | SJF (SRTF) | b = 2, c = 5, d = 9, a = 14 | (2 + 5 + 9 + 14) / 4 = 7.5 |
 | Priority | c = 5, d = 7, a = 12, b = 14 | (5 + 7 + 12 + 14) / 4 = 9.5 |
 
-Because all jobs are ready at time 0, each completion time equals the turnaround time of the corresponding job. The minimum mean turnaround time is attained under SRTF, consistent with the optimality of SJF for a static arrival set (Section 5.2). The largest mean is attained under round-robin. The jobs are run alternately on the CPU, and 3 of the 4 jobs are completed at time 11 or later.
+Because all four jobs arrive at time 0, each job's completion time equals its turnaround time. SRTF achieves the minimum mean turnaround time (7.5), consistent with the optimality of SJF for a static arrival set (Section 5.2). Round-robin produces the highest mean (10.5) because alternating slices across all four jobs pushes three of the four completions to time 11 or later.
 
 ### 19.13.3 Reference Implementation: One Logical CPU
 
@@ -1175,53 +1173,53 @@ Because all jobs are ready at time 0, each completion time equals the turnaround
 {{#include ../code/out/ch19_quantum_sched_rs.out}}
 ```
 
-- **Min-heap construction.** In the C++ standard library, `std::priority_queue` is a max-heap by default. With `std::greater<>` as the comparator, the order is reversed. In Rust, `BinaryHeap` is likewise a max-heap, and each entry is wrapped in `std::cmp::Reverse`. In both languages, the tie-breaking rule is a consequence of lexicographic tuple comparison, and no hand-written comparator is required.
-- **Generic jobs.** In both languages, the closure of a job is stored by value. In Rust, `Job<F>` is declared, and `schedule<F, T>` is bounded by `F: Fn() -> T`. In C++, `template <std::invocable F> struct Job` is declared, and the result type is named `std::invoke_result_t<F>`, so the return type of `schedule` is `std::vector<T>`, as it is `Vec<T>` in Rust. The worker pool's jobs are `Job<const char* (*)()>`, built from captureless lambdas, the counterpart of Rust's `fn() -> &'static str`.
-- **Quantum test.** In the Rust implementation, the remaining burst is compared with the quantum through `left.cmp(&quantum)`, and the result is matched on `Ordering`. Preemption is handled in the `Greater` arm, and completion in the combined `Less | Equal` arm. In the C++ implementation, the same decision is expressed as a guard clause followed by `continue`.
-- **Deferred execution.** The closure of a job is invoked once, in the slice in which the job is completed. Time is therefore accounted on a logical clock, and the scheduling decision is separated from the work performed by the job.
+- **Min-Heap Construction:** C++'s `std::priority_queue` defaults to a max-heap; passing `std::greater<>` as the comparator inverts it into a min-heap. Rust's `BinaryHeap` is likewise a max-heap, inverted by wrapping each entry in `std::cmp::Reverse`. In both languages, built-in lexicographical tuple comparison handles tie-breaking without a custom comparator.
+- **Generic Jobs:** Both implementations store each job's callable by value. Rust defines `Job<F>` and constrains `schedule<F, T>` with `F: Fn() -> T`. C++ declares `template <std::invocable F> struct Job` and deduces the result type via `std::invoke_result_t<F>`, returning `std::vector<T>` just as Rust returns `Vec<T>`. In the worker pool below, C++ represents jobs as `Job<const char* (*)()>` built from captureless lambdas, the counterpart to Rust's `fn() -> &'static str`.
+- **Quantum Check:** Rust compares remaining burst against the quantum via `left.cmp(&quantum)` and dispatches on `Ordering`, handling preemption in the `Greater` arm and completion in `Less | Equal`. C++ expresses the same branch as a guard clause followed by `continue`.
+- **Deferred Execution:** Both implementations invoke a job's callable once, during the slice in which it finishes. This decouples scheduling decisions on a logical clock from the actual work performed by the job.
 
 ### 19.13.4 Complexity and Starvation
 
-A job with burst `t` is dispatched ⌈t / q⌉ times. For a schedule of `s` dispatches in total and `n` jobs, `s` heap removals and at most `s` insertions are performed, for O(s log n) time and O(n) space. Comparable bounds hold for a Linux CFS runqueue. Insertion into its red-black tree costs O(log n), and with the cached `rb_leftmost` pointer, selection is an O(1) operation.
+A job with burst `t` dispatches `⌈t / q⌉` times. Across a schedule of `s` total dispatches and `n` jobs, the dispatcher performs `s` heap removals and at most `s` insertions, running in O(s log n) time and O(n) space. A Linux CFS runqueue provides comparable bounds: inserting into its red-black tree takes O(log n) time, while the cached `rb_leftmost` pointer makes selection O(1).
 
-The workload above is static, since every job is ready at time 0. Under a continuous stream of short or urgent arrivals, long or low-priority jobs are starved indefinitely under the SRTF and priority ranks. The standard remedy is **aging**, a gradual reduction of the rank of a job in proportion to the time it has waited. In CFS, the same effect follows from the structure of the runqueue, because the `vruntime` of a waiting task does not grow while the `vruntime` of every running task does.
+The workload above is static because all jobs arrive at time 0. Under a sustained stream of short or high-priority arrivals, SRTF and strict priority scheduling can starve long or low-priority jobs indefinitely. **Aging** resolves starvation by gradually reducing a job's rank in proportion to its wait time. CFS prevents starvation structurally: a waiting task's `vruntime` stays fixed while every running task's `vruntime` advances, guaranteeing eventual dispatch.
 
 <div class="callout keyidea">
 <span class="label">Key idea</span>
 
-With a single min-heap ordered by `(rank, queued at, index)`, FCFS, SRTF and priority scheduling are implemented through the choice of rank alone. When a preempted job is reinserted with the current clock as its queued-at time, jobs of equal rank are rotated in round-robin order.
+A single min-heap keyed by `(rank, queued_at, index)` unifies FCFS, SRTF, and priority scheduling through the choice of rank alone. Reinserting a preempted job with the current clock as `queued_at` produces round-robin rotation among jobs of equal rank.
 
 </div>
 
 ### 19.13.5 Extending to a Worker Pool: Problem Contract
 
-In Section 19.13.3, jobs are executed on a single logical CPU. In a common interview extension, the same jobs are executed on several worker threads that share one heap, under the lock discipline of the thread pool in Section 19.8. The contract of the scheduler is specified as follows:
+Section 19.13.3 dispatches jobs onto one logical CPU. A standard interview follow-up extends the same scheduler to run across multiple worker threads sharing a single priority heap, applying the lock discipline from the thread pool in Section 19.8. The concurrent scheduler obeys the following contract:
 
-- **Input.** A fixed batch of jobs, a worker count `w`, and a policy. Each job consists of a closure, an estimated running time and a static priority. The batch is known before any worker starts, and no job is submitted later.
-- **Dispatch rule.** Every idle worker removes the job of smallest rank from the shared heap. The rank is computed by the ranking function of Section 19.13.1: `0` for FCFS, the estimated time for SJF and the priority for priority scheduling. Ties are broken by the time at which the job was inserted, measured on a monotonic clock, and then by the job index.
-- **Output.** The results of all jobs, in the order in which the jobs are completed.
-- **Termination.** A worker terminates when it observes an empty heap. The caller resumes only after every worker has terminated.
-- **Failure semantics.** In Rust, a poisoned mutex is reported to the caller as `Err(String)` without a panic in library code. In C++, which has no notion of a poisoned mutex, the same scheduling logic is implemented without an error path.
+- **Input:** A fixed batch of jobs, a worker count `w`, and a scheduling policy. Each job encapsulates a callable, an estimated duration, and a static priority. The complete batch is known before workers start, and no jobs arrive dynamically.
+- **Dispatch Rule:** Each idle worker pops the lowest-ranked job from the shared heap using the ranking function of Section 19.13.1 (`0` for FCFS, estimated duration for SJF, and static priority for priority scheduling). Ties break by insertion timestamp on a monotonic clock, then by job index.
+- **Output:** A vector containing all job results in actual completion order.
+- **Termination:** A worker exits upon observing an empty heap. The caller resumes only after every worker has terminated.
+- **Failure Semantics:** In Rust, a poisoned mutex surfaces to the caller as `Err(String)` rather than panicking in library code. C++ `std::mutex` has no poisoning mechanism, so the C++ implementation omits an error path.
 
 ### 19.13.6 Synchronization Model and Lock Scope
 
-The shared state is protected by 2 mutexes. Removals from the runqueue are serialized by the heap mutex, and appends to the result vector by the results mutex. Each mutex is held only for its single operation. In particular, a worker releases the heap mutex before it invokes the job closure, so the other workers can dispatch jobs while the first job is executed. The same rule is followed in the thread pool of Section 19.8.4, where the entire pool is serialized if a job is executed under the queue lock.
+Two mutexes protect the shared state: the heap mutex serializes removals from the runqueue, and the results mutex serializes appends to the output vector. Workers hold each mutex only for its single critical operation. A worker releases the heap mutex before invoking the job callable so other workers can claim and execute jobs concurrently. Violating this rule produces the same serialization bug analyzed in Section 19.8.4, where running work under the queue lock collapses the pool to a single core.
 
-The lifetime of the workers is bounded by a lexical scope. In Rust, every spawned thread is joined at the end of `std::thread::scope`. Workers can therefore borrow the job slice, heap and result vector from the stack frame of `schedule`. In C++, the workers are `std::jthread` objects stored in a vector inside a block. At the end of the block, each thread is joined in the destructor of its `std::jthread`, and the result vector is returned only after all workers have terminated.
+Worker lifetimes are bound strictly to a lexical scope. In Rust, `std::thread::scope` joins every spawned thread before returning, allowing workers to borrow the job slice, heap, and result vector directly from `schedule`'s stack frame. In C++, workers live as `std::jthread` instances inside a scoped vector; leaving the block invokes each destructor, joining all threads before `schedule` returns the result vector.
 
-Because the batch is fixed and no job is added after the workers start, an empty heap is a final state, and a worker that observes it can terminate at once. In the thread pool of Section 19.8, new tasks are accepted at any time, so its workers must instead sleep on a condition variable when the queue is empty.
+Because the job batch is fixed at startup, an empty heap is a terminal state and workers exit immediately. By contrast, the general-purpose thread pool in Section 19.8 accepts tasks dynamically, so its workers must sleep on a condition variable when the queue empties rather than terminating.
 
 ### 19.13.7 Dispatch Order versus Completion Order
 
-The workload consists of the 4 jobs of Section 19.13.2, with real execution times of 50, 20, 30 and 40 ms for a, b, c and d, and 2 workers. The order in which jobs are removed from the heap is fixed by the policy. The order of completion also depends on the execution times and on the number of workers (Figure 19-8).
+Executing the four jobs from Section 19.13.2 across two workers with wall-clock sleep durations of 50, 20, 30, and 40 ms (for `a`, `b`, `c`, and `d`) demonstrates the distinction between dispatch order and completion order (Figure 19-8). The policy fixes the sequence of heap pops, whereas job durations and worker concurrency determine when results land in the output vector.
 
 <figure>
 <img src="figures/ch19_priority_workers.svg" alt="Three timelines from 0 to 90 ms with two worker lanes each. FCFS: worker 1 runs a from 0 to 50 and d from 50 to 90, worker 2 runs b from 0 to 20 and c from 20 to 50. SJF: worker 1 runs b then d, worker 2 runs c then a, results b, c, d, a. Priority: worker 1 runs c then a, worker 2 runs d then b, results c, d, b, a."/>
 </figure>
 
-Under priority scheduling, the workers dispatch c and d (priority 1) first. Worker 1 completes c at 30 ms and dispatches a (priority 2). Worker 2 completes d at 40 ms and dispatches b (priority 3), and b is completed at 60 ms, 20 ms before a. The order of dispatch therefore follows from the static priority, but the order of completion does not.
+Under priority scheduling, workers dispatch `c` and `d` (priority 1) first. Worker 1 finishes `c` at 30 ms and claims `a` (priority 2); worker 2 finishes `d` at 40 ms and claims `b` (priority 3). Because `b` runs for only 20 ms, it finishes at 60 ms, 20 ms ahead of `a`. Static priority therefore orders dispatch, not completion.
 
-Under FCFS, a and c are both completed at about 50 ms on different workers, and the worker that first acquires the results mutex appends first. In 30 consecutive runs of the Rust program, the result was `["b", "a", "c", "d"]` 27 times and `["b", "c", "a", "d"]` 3 times. Under the SJF and priority schedules, the same result was printed in all 30 runs, because no 2 of their jobs are completed within a few milliseconds of each other.
+Under FCFS, `a` and `c` both finish around 50 ms on separate workers, so whichever worker acquires the results mutex first records its result first. Across 30 consecutive runs of the Rust binary, the output was `["b", "a", "c", "d"]` 27 times and `["b", "c", "a", "d"]` 3 times. SJF and priority scheduling produced identical results across all 30 runs because their completion times remain well separated.
 
 ### 19.13.8 Reference Implementation: Worker Pool
 
@@ -1237,7 +1235,7 @@ Under FCFS, a and c are both completed at about 50 ms on different workers, and 
 {{#include ../code/out/ch19_priority_workers.out}}
 ```
 
-The Rust scheduler is developed in 2 versions. In version 1 (Listing 19-24), every lock is acquired with `unwrap`, so a worker that observes a poisoned mutex panics. In version 2 (Listing 19-25), each `unwrap` is replaced with `?`, and errors are returned to the caller as values. The types, the ranking function and the job list are shared by both versions, and the same results are printed by both.
+The Rust implementation is presented in two iterations. Version 1 (Listing 19-24) locks each mutex with `.unwrap()`, panicking any worker that encounters a poisoned lock. Version 2 (Listing 19-25) replaces every `.unwrap()` with `?` and returns lock errors as values. Both versions share identical types, ranking logic, job definitions, and output.
 
 **Listing 19-24. The same scheduler in Rust, version 1, with `unwrap`.** ([`code/ch19/priority_workers_unwrap.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/priority_workers_unwrap.rs))
 
@@ -1251,7 +1249,7 @@ The Rust scheduler is developed in 2 versions. In version 1 (Listing 19-24), eve
 {{#include ../code/out/ch19_priority_workers_unwrap_rs.out}}
 ```
 
-In version 1, each worker pops the next entry in the statement `let next = heap.lock().unwrap().pop();`. The `MutexGuard` is a temporary of that `let` statement and is dropped at its semicolon, so the heap lock is released before the job is run. An empty heap is detected with `let ... else`, and the loop is left with `break`. After the scope, the vector is taken out of its mutex with `results.into_inner().unwrap()` without locking it, because every worker has been joined.
+In version 1, each worker pops the next entry with `let next = heap.lock().unwrap().pop();`. The temporary `MutexGuard` drops at the semicolon, releasing the heap mutex before the job executes. A `let ... else` binding breaks out of the loop when the heap is empty. Once `thread::scope` joins all workers, `results.into_inner().unwrap()` extracts the vector without locking.
 
 **Listing 19-25. The same scheduler in Rust, version 2, with errors returned as values.** ([`code/ch19/priority_workers.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/priority_workers.rs))
 
@@ -1265,37 +1263,37 @@ In version 1, each worker pops the next entry in the statement `let next = heap.
 {{#include ../code/out/ch19_priority_workers_rs.out}}
 ```
 
-In the C++ implementation, each worker takes a `std::unique_lock` on the heap, pops the smallest entry, and releases the lock with `unlock()` before it invokes the job. On an empty heap, the worker leaves its loop with `return`, the counterpart of `break` in Rust version 1. In both Rust versions, the guard returned by `heap.lock()` is a temporary of the statement that pops, with the same effect.
+In the C++ implementation, each worker acquires a `std::unique_lock` on the heap, pops the top entry, and calls `unlock()` explicitly before invoking the job. Observing an empty heap exits the worker via `return`, mirroring `break` in Rust version 1. In both Rust versions, dropping the temporary `MutexGuard` at the end of the pop statement achieves the same lock scope automatically.
 
 ### 19.13.9 Error Propagation and Failure Semantics
 
-In version 2 of the Rust implementation, the return type of each worker closure is `Result<(), String>`, so the `?` operator can be applied inside the worker loop. A worker ends under 2 conditions:
+In Rust version 2, each worker closure returns `Result<(), String>`, allowing `?` inside the loop. Two conditions terminate a worker:
 
-- **A poisoned mutex.** `Err(PoisonError)` is returned by `lock()` when another thread panicked while holding the guard. The error is converted to its message by `map_err(|e| e.to_string())` and returned from the closure.
-- **An empty heap.** `None` is returned by `pop()` and converted into `Err` with `ok_or("worker polled an empty queue")`. Through `From`, the `&str` is converted into `String` by the `?` operator. An empty heap is the normal exit from the loop, so the loop contains no `break`.
+- **Poisoned Mutex:** `lock()` returns `Err(PoisonError)` if another thread panicked while holding the guard. `map_err(|e| e.to_string())` converts the error to a `String`, and `?` exits the closure.
+- **Empty Heap:** `pop()` returns `None`, `ok_or("worker polled an empty queue")` converts it to `Err(&str)`, and `?` converts the `&str` into `String` via `From`. Because an empty heap exits through `?`, the loop contains no explicit `break`.
 
-The `ScopedJoinHandle` returned by each `s.spawn` is dropped without an explicit join. Every worker is still joined at the end of the scope, but the `Result` of each closure is discarded, so a worker that ends because of a poisoned lock cannot be distinguished from a worker that ends normally. After the scope, `Err` is returned by `heap.into_inner()` or `results.into_inner()` if the corresponding mutex was poisoned, and that error is passed from `schedule` to its caller. If a job panics, the calling thread panics at the end of `thread::scope`, after all workers have been joined.
+Because this version drops each `ScopedJoinHandle` returned by `s.spawn` without joining it explicitly, `thread::scope` joins every worker automatically but discards each closure's `Result`. A worker exiting on a poisoned lock is therefore indistinguishable from one exiting normally on an empty heap. After the scope finishes, `heap.into_inner()` and `results.into_inner()` detect either poisoned mutex and propagate the `Err` to the caller of `schedule`. If a job closure itself panics, `thread::scope` propagates the panic on the calling thread after all workers have joined.
 
-No equivalent error path exists in the C++ implementation. A `std::mutex` has no poisoned state, so the lock is acquired normally after another thread failed, and the invariants of the protected data may be violated. If an exception escapes the function of a `std::jthread`, `std::terminate` is called. Job failures can therefore be reported in C++ only if exceptions are caught inside the worker and recorded alongside the results.
+The C++ implementation provides no equivalent error path. Because `std::mutex` does not track lock poisoning, subsequent threads acquire the lock normally after a failure even if the protected invariants are broken. Moreover, an uncaught exception escaping a `std::jthread` invokes `std::terminate`. A C++ scheduler that must report per-job failures must catch exceptions inside each worker and record them alongside the results.
 
 ### 19.13.10 Systems Analysis and Interview Follow-Ups
 
-- **Cost of dispatch.** Building the heap from n jobs costs O(n), and each of the n removals costs O(log n) under the heap mutex. With `w` workers and jobs of equal duration `d`, the batch is completed in approximately ⌈n / w⌉ × d.
-- **Lock contention.** When jobs are very short, the dispatch rate is limited by the single heap mutex. In production runtimes such as Tokio and the Go scheduler, each worker has a local queue. A worker whose local queue is empty takes jobs from other workers' queues, a technique called **work stealing** (Section 5.5).
-- **Dynamic submission.** For jobs to be accepted while the workers run, a condition variable and a shutdown flag are required, as in Section 19.8.2. An empty heap is then a transient state, and a worker sleeps instead of terminating.
-- **Starvation and inversion.** Under continuous arrivals, long or low-priority jobs are starved under the SJF and priority ranks unless the ranks are aged with waiting time (Section 19.13.4). If a lock is held during a long low-priority job, an urgent job that needs the same lock is delayed, the priority inversion of Section 5.4.
+- **Dispatch Cost:** Heapifying `n` jobs costs O(n), and each of the `n` pops costs O(log n) under the heap mutex. With `w` workers and uniform job duration `d`, the batch completes in approximately `⌈n / w⌉ × d`.
+- **Lock Contention:** A single global heap mutex becomes a bottleneck when jobs are very short. Production runtimes such as Tokio and the Go scheduler mitigate contention by giving each worker a local runqueue; idle workers steal tasks from peer queues, a strategy called **work stealing** (Section 5.5).
+- **Dynamic Submission:** Supporting continuous job submission while workers run requires a condition variable and a shutdown flag (Section 19.8.2) so workers sleep on an empty heap instead of exiting.
+- **Starvation and Priority Inversion:** Under continuous arrivals, SJF and priority scheduling can starve long or low-priority jobs unless ranks incorporate aging (Section 19.13.4). Furthermore, if jobs contend on shared locks, a low-priority job holding a lock can block a higher-priority job waiting on it, triggering the **priority inversion** analyzed in Section 5.4.
 
 <div class="callout keyidea">
 <span class="label">Key idea</span>
 
-Several workers can share one locked min-heap when the critical section contains only the removal of the next job. The order of dispatch is fixed by the ranking function, and the order of completion depends on the execution times and the number of workers.
+Multiple workers can share a single mutex-protected min-heap cleanly when the critical section covers only the pop operation. The ranking function determines dispatch order, while job durations and worker concurrency govern completion order.
 
 </div>
 
 <div class="callout caution">
 <span class="label">Watch out</span>
 
-Errors returned from a scoped Rust thread are discarded unless its `ScopedJoinHandle` is joined explicitly. To report the failure of an individual worker, the handles must be retained and each one joined.
+Dropping a `ScopedJoinHandle` inside `thread::scope` discards the `Result` returned by that worker closure. A scheduler that must surface per-worker errors must retain all handles and join each one explicitly.
 
 </div>
 
