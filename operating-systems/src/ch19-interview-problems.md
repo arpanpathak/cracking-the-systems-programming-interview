@@ -1176,6 +1176,7 @@ Because all jobs arrive at time 0, each completion time equals the turnaround ti
 ```
 
 - **Min-heap construction.** The C++ standard library provides `std::priority_queue`, a max-heap by default. Supplying `std::greater<>` as the comparator reverses the order. In Rust, `BinaryHeap` is likewise a max-heap, and each entry is wrapped in `std::cmp::Reverse`. In both languages, lexicographic tuple comparison supplies the tie-breaking rule, and no hand-written comparator is required.
+- **Generic jobs.** In both languages, a job stores its closure by value. Rust declares `Job<F>` and bounds `schedule<F, T>` by `F: Fn() -> T`. C++ declares `template <std::invocable F> struct Job` and names the result type `std::invoke_result_t<F>`, so `schedule` returns `std::vector<T>` as Rust returns `Vec<T>`. The worker pool's jobs are `Job<const char* (*)()>`, built from captureless lambdas, the counterpart of Rust's `fn() -> &'static str`.
 - **Quantum test.** The Rust implementation compares the remaining burst with the quantum through `left.cmp(&quantum)` and matches on `Ordering`. The `Greater` arm performs preemption, and the combined `Less | Equal` arm performs completion. The C++ implementation expresses the same decision as a guard clause followed by `continue`.
 - **Deferred execution.** The closure of a job is invoked once, in the slice in which the job completes. The simulation therefore accounts for time on a logical clock and separates the scheduling decision from the work performed by the job.
 

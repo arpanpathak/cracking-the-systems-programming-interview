@@ -1,23 +1,24 @@
 // ch19/priority_workers.cpp: worker threads that pop a fixed set of jobs from a priority heap.
 #include <chrono>
+#include <concepts>
 #include <functional>
 #include <iostream>
 #include <mutex>
 #include <queue>
-#include <string>
 #include <thread>
 #include <tuple>
 #include <vector>
 
-using namespace std::chrono;
+using namespace std::chrono_literals;
 
+template <std::invocable F>
 struct Job {
-    std::function<std::string()> run;
+    F run;
     unsigned time;
     unsigned priority;
 };
 
-using JobState = std::tuple<unsigned, nanoseconds, size_t>;  // (rank, time queued, index)
+using JobState = std::tuple<unsigned, std::chrono::nanoseconds, size_t>;  // (rank, time queued, index)
 using MinHeap = std::priority_queue<JobState, std::vector<JobState>, std::greater<>>;
 
 enum class Policy { Fcfs, Sjf, Priority };
@@ -31,14 +32,16 @@ unsigned rank(Policy policy, unsigned remaining, unsigned priority) {
     return 0;
 }
 
-std::vector<std::string> schedule(const std::vector<Job>& jobs, size_t workers, Policy policy) {
-    auto start = steady_clock::now();  // Monotonic clock which never goes backward.
+template <std::invocable F, typename T = std::invoke_result_t<F>>
+std::vector<T> schedule(const std::vector<Job<F>>& jobs, size_t workers, Policy policy) {
+    auto start = std::chrono::steady_clock::now();  // Monotonic Clock which never goes backward.
     MinHeap heap;
     for (size_t index = 0; index < jobs.size(); ++index) {
-        heap.emplace(rank(policy, jobs[index].time, jobs[index].priority), steady_clock::now() - start, index);
+        heap.emplace(rank(policy, jobs[index].time, jobs[index].priority),
+                     std::chrono::steady_clock::now() - start, index);
     }
     std::mutex heap_mutex, results_mutex;
-    std::vector<std::string> results;
+    std::vector<T> results;
 
     {
         std::vector<std::jthread> threads;
@@ -51,7 +54,7 @@ std::vector<std::string> schedule(const std::vector<Job>& jobs, size_t workers, 
                     heap.pop();
                     lock.unlock();
 
-                    auto out = jobs[index].run();
+                    T out = jobs[index].run();
                     std::scoped_lock guard(results_mutex);
                     results.push_back(out);
                 }
@@ -62,7 +65,8 @@ std::vector<std::string> schedule(const std::vector<Job>& jobs, size_t workers, 
     return results;
 }
 
-void print(const char* label, const std::vector<std::string>& results) {
+template <typename T>
+void print(const char* label, const std::vector<T>& results) {
     std::cout << label << " [";
     for (size_t i = 0; i < results.size(); ++i) {
         std::cout << (i ? ", \"" : "\"") << results[i] << '"';
@@ -71,10 +75,12 @@ void print(const char* label, const std::vector<std::string>& results) {
 }
 
 int main() {
-    auto job = [](std::string name, int millis, unsigned time, unsigned priority) {
-        return Job{[=] { std::this_thread::sleep_for(milliseconds(millis)); return name; }, time, priority};
+    std::vector<Job<const char* (*)()>> jobs = {
+        {[] { std::this_thread::sleep_for(50ms); return "a"; }, 5, 2},
+        {[] { std::this_thread::sleep_for(20ms); return "b"; }, 2, 3},
+        {[] { std::this_thread::sleep_for(30ms); return "c"; }, 3, 1},
+        {[] { std::this_thread::sleep_for(40ms); return "d"; }, 4, 1},
     };
-    std::vector<Job> jobs = {job("a", 50, 5, 2), job("b", 20, 2, 3), job("c", 30, 3, 1), job("d", 40, 4, 1)};
 
     print("fcfs    ", schedule(jobs, 2, Policy::Fcfs));
     print("sjf     ", schedule(jobs, 2, Policy::Sjf));

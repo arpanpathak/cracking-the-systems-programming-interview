@@ -1,4 +1,5 @@
 // ch19/quantum_sched.cpp: FCFS, SJF, and priority scheduling with a time quantum on one heap.
+#include <concepts>
 #include <functional>
 #include <iostream>
 #include <queue>
@@ -6,11 +7,14 @@
 #include <tuple>
 #include <vector>
 
+template <std::invocable F>
 struct Job {
-    std::function<std::string()> run;
+    F run;
     unsigned time;
     unsigned priority;  // Smaller priority means higher
 };
+template <typename F>
+Job(F, unsigned, unsigned) -> Job<F>;
 
 using JobState = std::tuple<unsigned, unsigned, size_t, unsigned>;  // (rank, queued at, index, time left)
 using MinHeap = std::priority_queue<JobState, std::vector<JobState>, std::greater<>>;
@@ -26,14 +30,15 @@ unsigned rank(Policy policy, unsigned remaining, unsigned priority) {
     return 0;
 }
 
-std::vector<std::string> schedule(const std::vector<Job>& jobs, unsigned quantum, Policy policy) {
+template <std::invocable F, typename T = std::invoke_result_t<F>>
+std::vector<T> schedule(const std::vector<Job<F>>& jobs, unsigned quantum, Policy policy) {
     unsigned clock = 0;
     MinHeap heap;
     for (size_t index = 0; index < jobs.size(); ++index) {
         heap.emplace(rank(policy, jobs[index].time, jobs[index].priority), clock, index, jobs[index].time);
     }
 
-    std::vector<std::string> results;
+    std::vector<T> results;
     while (!heap.empty()) {
         auto [rank_, queued_at, index, left] = heap.top();
         heap.pop();
@@ -51,7 +56,8 @@ std::vector<std::string> schedule(const std::vector<Job>& jobs, unsigned quantum
     return results;
 }
 
-void print(const char* label, const std::vector<std::string>& results) {
+template <typename T>
+void print(const char* label, const std::vector<T>& results) {
     std::cout << label << " [";
     for (size_t i = 0; i < results.size(); ++i) {
         std::cout << (i ? ", \"" : "\"") << results[i] << '"';
@@ -63,7 +69,7 @@ int main() {
     auto job = [](std::string name, unsigned time, unsigned priority) {
         return Job{[name] { return name + " done"; }, time, priority};
     };
-    std::vector<Job> jobs = {job("a", 5, 2), job("b", 2, 3), job("c", 3, 1), job("d", 4, 1)};
+    std::vector jobs = {job("a", 5, 2), job("b", 2, 3), job("c", 3, 1), job("d", 4, 1)};
 
     print("fcfs    ", schedule(jobs, 2, Policy::Fcfs));
     print("sjf     ", schedule(jobs, 2, Policy::Sjf));
