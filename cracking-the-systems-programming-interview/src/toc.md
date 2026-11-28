@@ -572,6 +572,17 @@ Complete navigable index of all ten parts, thirty chapters, subsections, and app
   - [Summary](ch31-scheduling.html#summary)
   - [Exercises](ch31-scheduling.html#exercises)
 
+## Part 12: Sweep lines
+
+- **[Sweep-line algorithms](ch32-sweep-line.html)**
+  - [32.1 The skyline problem](ch32-sweep-line.html#321-the-skyline-problem)
+  - [32.2 An ordered multiset of active heights](ch32-sweep-line.html#322-an-ordered-multiset-of-active-heights)
+  - [32.3 Events at the same coordinate](ch32-sweep-line.html#323-events-at-the-same-coordinate)
+  - [32.4 A trace](ch32-sweep-line.html#324-a-trace)
+  - [32.5 The program](ch32-sweep-line.html#325-the-program)
+  - [Summary](ch32-sweep-line.html#summary)
+  - [Exercises](ch32-sweep-line.html#exercises)
+
 - **[Appendix A. The Rust cheat sheet](appendix-a-cheatsheet.html)**
 
 - **[Appendix B. The benchmark report](appendix-d-benchmark-report.html)**
