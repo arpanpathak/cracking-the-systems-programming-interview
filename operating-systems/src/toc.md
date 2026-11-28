@@ -224,6 +224,17 @@
     - [19.12.4 Synchronization Taxonomy: Mutex, Spinlock, and Semaphore](ch19-interview-problems.md#19124-synchronization-taxonomy-mutex-spinlock-and-semaphore)
     - [19.12.5 Deadlock Dynamics: Coffman Conditions and Prevention Strategies](ch19-interview-problems.md#19125-deadlock-dynamics-coffman-conditions-and-prevention-strategies)
     - [19.12.6 Virtual Memory Architecture and Page Fault Resolution](ch19-interview-problems.md#19126-virtual-memory-architecture-and-page-fault-resolution)
+  - [19.13 The Priority Job Scheduler](ch19-interview-problems.md#1913-the-priority-job-scheduler)
+    - [19.13.1 Policy as a Priority Key](ch19-interview-problems.md#19131-policy-as-a-priority-key)
+    - [19.13.2 The Dispatch Loop and Quantum Expiration](ch19-interview-problems.md#19132-the-dispatch-loop-and-quantum-expiration)
+    - [19.13.3 Reference Implementation: One Logical CPU](ch19-interview-problems.md#19133-reference-implementation-one-logical-cpu)
+    - [19.13.4 Complexity and Starvation](ch19-interview-problems.md#19134-complexity-and-starvation)
+    - [19.13.5 Extending to a Worker Pool: Problem Contract](ch19-interview-problems.md#19135-extending-to-a-worker-pool-problem-contract)
+    - [19.13.6 Synchronization Model and Lock Scope](ch19-interview-problems.md#19136-synchronization-model-and-lock-scope)
+    - [19.13.7 Dispatch Order versus Completion Order](ch19-interview-problems.md#19137-dispatch-order-versus-completion-order)
+    - [19.13.8 Reference Implementation: Worker Pool](ch19-interview-problems.md#19138-reference-implementation-worker-pool)
+    - [19.13.9 Error Propagation and Failure Semantics](ch19-interview-problems.md#19139-error-propagation-and-failure-semantics)
+    - [19.13.10 Systems Analysis and Interview Follow-Ups](ch19-interview-problems.md#191310-systems-analysis-and-interview-follow-ups)
 
 ---
 

@@ -65,6 +65,10 @@
 
 - [Compact implementations](ch30-drills.md)
 
+# Part 11: Scheduling
+
+- [Scheduling jobs by policy](ch31-scheduling.md)
+
 ---
 
 [Appendix A. The Rust cheat sheet](appendix-a-cheatsheet.md)

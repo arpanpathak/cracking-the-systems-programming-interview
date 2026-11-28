@@ -774,6 +774,23 @@ def machine_book(x, y):
     return out
 
 
+def machine_dispatch(x, y):
+    """A rack of job tickets sorted by rank, feeding two worker bots."""
+    out = rect(x + 120, y - 90, 190, 150, "url(#steel)", rx=8) + rivets(x + 120, y - 90, 190, 150)
+    out += text(x + 215, y - 62, "RANK", 20, INK, anchor="middle", spacing=3)
+    for k, (label, fill) in enumerate((("1  c", CREAM), ("1  d", CREAM), ("2  a", "#e8f5e9"), ("3  b", "#e8f5e9"))):
+        out += rect(x + 140, y - 48 + 26 * k, 150, 20, fill, INK, 2, rx=3)
+        out += text(x + 152, y - 33 + 26 * k, label, 14, INK, family="Menlo, monospace")
+    out += line(x + 215, y + 60, x + 215, y + 80, INK, 6)
+    out += line(x + 60, y + 80, x + 370, y + 80, INK, 8)
+    for i in range(2):
+        wx = x + 110 + 210 * i
+        out += line(wx, y + 80, wx, y + 100, INK, 3)
+        out += robot(wx, y + 160, 0.32, head=("box", "dome")[i], eyes=("round", "visor")[i],
+                     antenna=("bolt", "twin")[i], accent=(RUST, TEAL)[i], held=("hammer", "wrench")[i])
+    return out
+
+
 # ------------------------------------------------------------------- plates
 
 
@@ -809,6 +826,7 @@ CHAPTERS = [
     (28, machine_seal, dict(head="dome", eyes="goggles", antenna="twin", held="magnifier", accent=TEAL), "SEAL", "notary of the certificate desk"),
     (29, machine_dock, dict(head="tv", eyes="round", antenna="hat", held="flag", accent=TEAL), "DOCK", "harbormaster of the connection pool"),
     (30, machine_drill, dict(head="box", eyes="goggles", antenna="hat", held="stopwatch", accent=RUST), "DRILL", "sergeant of the timed round"),
+    (31, machine_dispatch, dict(head="tv", eyes="visor", antenna="spring", held="clipboard", accent=BRASS), "DISPATCHER", "picks the next job by rank"),
 ]
 
 APPENDICES = [
