@@ -710,6 +710,47 @@ visited value through `map`.
 
 The [complete tree iterator program](#tree-iterator-complete-program) below includes the example input and `main`.
 
+### 11.7.3 An arena tree with `iter::from_fn`
+
+The same preorder walk can be written without an iterator struct. The next program stores every node
+in one `Vec`, called an **arena**, and names each child by its index in that vector. A node therefore
+holds `children: Vec<usize>` rather than child nodes. The tree from its `main` has the root `0` with
+the children `1` and `2`, and preorder visits `Root`, `Left Child`, `Right Child`.
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/arena_tree_iterator.rs:1:29}}
+```
+
+`std::iter::from_fn` turns a closure into an iterator. Each call to `next` runs the closure once, and
+the closure returns `Some(item)` or `None` like `next` itself. The stack moves into the closure with
+`move`, so the closure owns the iterator's state, and no `TreeIter` type or `impl Iterator` block is
+needed. The `self` reference moves into the closure as well, which ties the returned iterator to the
+borrow of the tree.
+
+The stack starts from `self.root.into_iter().collect()`. An `Option` iterates over zero or one value,
+so an empty tree starts with an empty stack and a tree with a root starts with `[0]`. Because
+`Option<usize>` is `Copy`, reading `self.root` copies the index and leaves the tree unchanged.
+
+`node.children.iter()` yields `&usize` values, yet `stack.extend` accepts them for a `Vec<usize>`.
+The standard library implements `Extend<&T>` for `Vec<T>` whenever `T` is `Copy`, so each index is
+copied into the stack. As in section 11.7.1, `rev` pushes the children in reverse, and the first child
+leaves the stack first.
+
+| Call to `next` | Stack before | Popped | Pushed | Stack after | Yields |
+|---|---|---|---|---|---|
+| 1 | `[0]` | 0 | 2, 1 | `[2, 1]` | `Root` |
+| 2 | `[2, 1]` | 1 | nothing | `[2]` | `Left Child` |
+| 3 | `[2]` | 2 | nothing | `[]` | `Right Child` |
+| 4 | `[]` | nothing | nothing | `[]` | `None` |
+
+The stack in this version holds indices, each 8 bytes on a 64-bit target, instead of references into
+the tree. The arena keeps all nodes in one allocation, although each node's `children` vector is still
+a separate allocation. Traversal time stays O(n), and a wide tree can still leave up to O(n) indices
+on the stack.
+
+The [complete arena tree iterator program](#arena-tree-iterator-complete-program) below includes the
+example input and `main`.
+
 ## 11.8 Finding the lowest common ancestor
 
 An **ancestor** lies on the path from the root to a node. Here, a node also counts as its own
@@ -913,6 +954,23 @@ LCA(8, 7) = 1
 LCA(2, 8) = 2
 ```
 
+<a id="arena-tree-iterator-complete-program"></a>
+
+### Arena tree iterator
+
+<p class="listing"><b>Listing 11.26</b> The complete program: <code>arena_tree_iterator.rs</code>.</p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/arena_tree_iterator.rs}}
+```
+
+Run from `rust-interview-lab`:
+
+```text
+$ cargo run --bin arena_tree_iterator
+["Root", "Left Child", "Right Child"]
+```
+
 <div class="summary" markdown="1">
 
 ## Summary
@@ -937,6 +995,7 @@ LCA(2, 8) = 2
   independent of dictionary cardinality.
 
 - A borrowed stack turns preorder traversal into an iterator without cloning node values.
+- An arena tree names children by index, and `iter::from_fn` turns a closure that owns a stack of indices into a preorder iterator.
 - Lowest-common-ancestor searches need a stated target identity rule and assume both targets are present.
 
 </div>
@@ -951,3 +1010,4 @@ LCA(2, 8) = 2
 4. Add `words_with_prefix(&self, prefix: &str) -> Vec<String>` to the trie.
 5. Reverse the iterator child insertion order and predict the resulting traversal.
 6. Pass one absent target to each ancestor function. Extend the result to record whether both targets were found.
+7. Add a `bfs_iter` method to the arena tree of section 11.7.3 with `iter::from_fn` and a `VecDeque<usize>`, and print the visit order for a tree of depth 3.
