@@ -791,6 +791,20 @@ def machine_dispatch(x, y):
     return out
 
 
+def machine_sweep(x, y):
+    """A vertical sweep line passing over a row of buildings."""
+    out = ""
+    for left, width, height in ((40, 70, 110), (90, 60, 160), (140, 90, 130), (270, 80, 110), (330, 70, 90)):
+        out += rect(x + left, y + 150 - height, width, height, "url(#steel)", rx=2)
+        for k in range(height // 30):
+            out += rect(x + left + 12, y + 160 - height + 30 * k, 12, 12, CREAM, INK, 1.5, rx=1)
+    out += line(x + 20, y + 150, x + 420, y + 150, INK, 6)
+    out += line(x + 205, y - 80, x + 205, y + 170, RUST, 5)
+    out += '<path d="M %.1f %.1f l 30 11 l -30 11 z" fill="%s" stroke="%s" stroke-width="2"/>' % (x + 208, y - 80, RUST, INK)
+    out += text(x + 248, y - 62, "SWEEP", 18, INK, spacing=3)
+    return out
+
+
 # ------------------------------------------------------------------- plates
 
 
@@ -827,6 +841,7 @@ CHAPTERS = [
     (29, machine_dock, dict(head="tv", eyes="round", antenna="hat", held="flag", accent=TEAL), "DOCK", "harbormaster of the connection pool"),
     (30, machine_drill, dict(head="box", eyes="goggles", antenna="hat", held="stopwatch", accent=RUST), "DRILL", "sergeant of the timed round"),
     (31, machine_dispatch, dict(head="tv", eyes="visor", antenna="spring", held="clipboard", accent=BRASS), "DISPATCHER", "picks the next job by rank"),
+    (32, machine_sweep, dict(head="dome", eyes="goggles", antenna="dish", held="magnifier", accent=TEAL), "SWEEPER", "reads the city one edge at a time"),
 ]
 
 APPENDICES = [
