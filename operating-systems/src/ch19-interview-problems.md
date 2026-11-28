@@ -1175,7 +1175,7 @@ Because all jobs arrive at time 0, each completion time equals the turnaround ti
 {{#include ../code/out/ch19_quantum_sched_rs.out}}
 ```
 
-- **Min-heap construction.** The C++ standard library provides `std::priority_queue`, a max-heap by default. Supplying `std::greater<JobState>` as the comparator reverses the order. In Rust, `BinaryHeap` is likewise a max-heap, and each entry is wrapped in `std::cmp::Reverse`. In both languages, lexicographic tuple comparison supplies the tie-breaking rule, and no hand-written comparator is required.
+- **Min-heap construction.** The C++ standard library provides `std::priority_queue`, a max-heap by default. Supplying `std::greater<>` as the comparator reverses the order. In Rust, `BinaryHeap` is likewise a max-heap, and each entry is wrapped in `std::cmp::Reverse`. In both languages, lexicographic tuple comparison supplies the tie-breaking rule, and no hand-written comparator is required.
 - **Quantum test.** The Rust implementation compares the remaining burst with the quantum through `left.cmp(&quantum)` and matches on `Ordering`. The `Greater` arm performs preemption, and the combined `Less | Equal` arm performs completion. The C++ implementation expresses the same decision as a guard clause followed by `continue`.
 - **Deferred execution.** The closure of a job is invoked once, in the slice in which the job completes. The simulation therefore accounts for time on a logical clock and separates the scheduling decision from the work performed by the job.
 
@@ -1264,7 +1264,7 @@ In version 1, each worker pops the next entry in the statement `let next = heap.
 {{#include ../code/out/ch19_priority_workers_rs.out}}
 ```
 
-In the C++ implementation, the critical section of the heap is isolated in the lambda `pop_next`, which returns `std::optional<std::size_t>`. The `std::lock_guard` is destroyed when `pop_next` returns, before the worker invokes the job. The condition `while (std::optional<std::size_t> index = pop_next())` ends the loop when the heap is empty. In both Rust versions, the guard returned by `heap.lock()` is a temporary of the statement that pops, with the same effect.
+In the C++ implementation, each worker takes a `std::unique_lock` on the heap, pops the smallest entry, and releases the lock with `unlock()` before it invokes the job. An empty heap ends the worker with `return`, the counterpart of `break` in Rust version 1. In both Rust versions, the guard returned by `heap.lock()` is a temporary of the statement that pops, with the same effect.
 
 ### 19.13.9 Error Propagation and Failure Semantics
 
