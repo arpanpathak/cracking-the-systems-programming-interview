@@ -558,6 +558,20 @@ Complete navigable index of all ten parts, thirty chapters, subsections, and app
   - [30.6 Practicing with this repository](ch30-drills.html#306-practicing-with-this-repository)
   - [30.7 Questions that come up](ch30-drills.html#307-questions-that-come-up)
 
+## Part 11: Scheduling
+
+- **[Scheduling jobs by policy](ch31-scheduling.html)**
+  - [31.1 Scheduling policies on one CPU](ch31-scheduling.html#311-scheduling-policies-on-one-cpu)
+    - [31.1.1 A single rank for 3 policies](ch31-scheduling.html#3111-a-single-rank-for-3-policies)
+    - [31.1.2 Preemption at the end of a quantum](ch31-scheduling.html#3112-preemption-at-the-end-of-a-quantum)
+    - [31.1.3 The program](ch31-scheduling.html#3113-the-program)
+  - [31.2 Workers that pop from a priority heap](ch31-scheduling.html#312-workers-that-pop-from-a-priority-heap)
+    - [31.2.1 Version 1, with `unwrap`](ch31-scheduling.html#3121-version-1-with-unwrap)
+    - [31.2.2 Version 2: errors as values](ch31-scheduling.html#3122-version-2-errors-as-values)
+  - [31.3 The complete files](ch31-scheduling.html#313-the-complete-files)
+  - [Summary](ch31-scheduling.html#summary)
+  - [Exercises](ch31-scheduling.html#exercises)
+
 - **[Appendix A. The Rust cheat sheet](appendix-a-cheatsheet.html)**
 
 - **[Appendix B. The benchmark report](appendix-d-benchmark-report.html)**

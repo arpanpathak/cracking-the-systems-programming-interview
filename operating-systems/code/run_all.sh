@@ -258,3 +258,13 @@ for name in bounded_queue ring_buffer ring_buffer_uninit free_list_allocator sps
     run "out/$name.bin" "ch19_$name"
     run "out/${name}_rs.bin" "ch19_${name}_rs"
 done
+
+# Chapter 19: the priority job scheduler (Section 19.13)
+for name in quantum_sched priority_workers; do
+    cxx "ch19/$name.cpp"
+    rs_std "ch19/$name.rs"
+    run "out/$name.bin" "ch19_$name"
+    run "out/${name}_rs.bin" "ch19_${name}_rs"
+done
+rs_std ch19/priority_workers_unwrap.rs
+run out/priority_workers_unwrap_rs.bin ch19_priority_workers_unwrap_rs

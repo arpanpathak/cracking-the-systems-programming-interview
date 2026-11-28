@@ -4001,6 +4001,83 @@ def ch06_memory_orderings():
     ])
 
 
+@figure
+def ch19_quantum_gantt():
+    fig = Fig("ch19_quantum_gantt", "Figure 19-7. One heap, three ranks, quantum q = 2 (a = 5, b = 2, c = 3, d = 4).", 236)
+
+    tones = {"a": "blue", "b": "green", "c": "amber", "d": "red"}
+    unit, left = 30, 136
+    rows = [
+        ("FCFS (RR)", [("a", 0, 2), ("b", 2, 4), ("c", 4, 6), ("d", 6, 8), ("a", 8, 10), ("c", 10, 11),
+                       ("d", 11, 13), ("a", 13, 14)], "mean turnaround 10.5"),
+        ("SJF (SRTF)", [("b", 0, 2), ("c", 2, 4), ("c", 4, 5), ("d", 5, 7), ("d", 7, 9), ("a", 9, 11),
+                        ("a", 11, 13), ("a", 13, 14)], "mean turnaround 7.5"),
+        ("Priority", [("c", 0, 2), ("d", 2, 4), ("c", 4, 5), ("d", 5, 7), ("a", 7, 9), ("a", 9, 11),
+                      ("a", 11, 12), ("b", 12, 14)], "mean turnaround 9.5"),
+    ]
+
+    for index, (policy, bars, average) in enumerate(rows):
+        y = index * 84
+        fig.text(28, y + 24, policy, "name")
+
+        for job, start, end in bars:
+            x = left + start * unit
+            fig.cell(x + 1.5, y, (end - start) * unit - 3, 38, tones[job], [(job, "sub")], kind="mid", r=8)
+
+        fig.rule(left, y + 44, left + 14 * unit, y + 44, "gray", width=1.4)
+        ticks = sorted({0} | {end for _, _, end in bars})
+        for tick in ticks:
+            x = left + tick * unit
+            fig.rule(x, y + 40, x, y + 49, "gray", width=1.4)
+            fig.text(x, y + 63, str(tick), "small", "middle")
+
+        fig.icon(578, y + 9, "schedule", "gray", 19)
+        fig.text(604, y + 24, average, "body")
+
+    fig.save([
+        "Every pop takes the smallest (rank, queued at, index) tuple. A job with time left is pushed back with the current clock as its queued-at time.",
+        "Rank 0 for every job turns the heap into a FIFO queue, so FCFS with a quantum is round-robin. Ranking by remaining time gives SRTF.",
+    ])
+
+
+@figure
+def ch19_priority_workers():
+    fig = Fig("ch19_priority_workers", "Figure 19-8. Two workers, one locked heap: dispatch order is fixed, completion order is not.", 330)
+
+    tones = {"a": "blue", "b": "green", "c": "amber", "d": "red"}
+    unit, left = 4.6, 200
+    rows = [
+        ("FCFS", [[("a", 0, 50), ("d", 50, 90)], [("b", 0, 20), ("c", 20, 50)]], "b, a, c, d"),
+        ("SJF", [[("b", 0, 20), ("d", 20, 60)], [("c", 0, 30), ("a", 30, 80)]], "b, c, d, a"),
+        ("Priority", [[("c", 0, 30), ("a", 30, 80)], [("d", 0, 40), ("b", 40, 60)]], "c, d, b, a"),
+    ]
+
+    for index, (policy, lanes, results) in enumerate(rows):
+        y = index * 110
+        fig.text(28, y + 22, policy, "name")
+        fig.text(28, y + 42, "results", "small")
+        fig.text(28, y + 60, results, "mono")
+
+        for lane, bars in enumerate(lanes):
+            ly = y + lane * 36
+            fig.text(left - 10, ly + 20, f"worker {lane + 1}", "small", "end")
+            for job, start, end in bars:
+                x = left + start * unit
+                fig.cell(x + 1.5, ly, (end - start) * unit - 3, 30, tones[job], [(f"{job} ({start}-{end} ms)", "small")],
+                         kind="mid", r=7)
+
+        fig.rule(left, y + 76, left + 90 * unit, y + 76, "gray", width=1.4)
+        for tick in range(0, 100, 10):
+            x = left + tick * unit
+            fig.rule(x, y + 72, x, y + 81, "gray", width=1.4)
+            fig.text(x, y + 95, str(tick), "small", "middle")
+
+    fig.save([
+        "Under FCFS, a and c both complete at 50 ms on different workers, so the worker that locks the result vector first appends first.",
+        "Under priority scheduling, b (priority 3) completes at 60 ms, before a (priority 2) at 80 ms: a priority orders dispatch, not completion.",
+    ])
+
+
 def main():
     prefix = sys.argv[1] if len(sys.argv) > 1 else ""
     drawn = 0
