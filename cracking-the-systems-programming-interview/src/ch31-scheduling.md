@@ -6,46 +6,84 @@
 
 This chapter covers
 
-- Reducing FCFS, shortest job first, and priority scheduling to a single rank in a min-heap
-- Preempting a job at the end of a time quantum, and how round-robin and SRTF emerge from the rank
-- Computing mean turnaround time under each policy from an execution trace
-- Coordinating worker threads in `thread::scope` over a shared `Mutex<BinaryHeap<_>>`
-- Evolving the scheduler from `.unwrap()` to value-based error propagation with `?`
+- Separating scheduling policy from dispatch mechanics by projecting policies onto a single min-heap sort key
+- Quantum-bounded preemption and how round-robin and SRTF emerge from re-queuing timestamps
+- Evaluating mean turnaround time across FCFS, SJF/SRTF, and priority policies
+- Extending the priority heap to concurrent OS worker threads under `thread::scope`
+- Replacing panic-on-poison `.unwrap()` calls with value-based error propagation and analyzing handle-dropping semantics
 
 </div>
 
-A **scheduler** decides which job runs next whenever runnable work exceeds the available processors. Section 15.6 introduced round-robin scheduling, which grants every runnable task an equal turn on the CPU. Other policies select the next job using a property of the job itself, such as its remaining work or its urgency. This chapter encodes each policy as a single numeric rank and stores ready jobs in the binary min-heap from chapter 5, running them first on one simulated CPU and then across real worker threads.
+Whenever the number of runnable tasks exceeds the available processor cores, a **scheduler** must arbitrate access
+to compute resources by deciding which job executes next and for how long. Section 15.6 examined round-robin
+time-slicing, which allocates equal processor shares to every runnable task. Real systems also schedule by intrinsic
+job attributes such as estimated service time or static urgency.
+
+Rather than writing a separate queue structure for every discipline, production dispatchers isolate **mechanism**
+(an ordered runqueue supporting logarithmic extraction of the minimum key) from **policy** (a ranking function that
+maps job metadata to an ordering key). This chapter formalizes that separation over Rust's `BinaryHeap` (chapter 5),
+first on a single simulated CPU with a discrete quantum and then across concurrent worker threads sharing a
+mutex-protected priority queue.
 
 ## 31.1 Scheduling policies on one CPU
 
-**The problem.** A single CPU executes a batch of jobs. Each job carries a name, a running time in clock units, and a priority where smaller numbers denote higher urgency. The CPU runs one job at a time for at most one **quantum**, a fixed slice of clock time. A **scheduling policy** chooses which job receives the next slice. Three classical policies are compared below:
+**Problem formulation.** Consider a single processor servicing a static batch of *n* jobs arriving simultaneously at
+logical clock `t = 0`. Each job *j* carries an identifier, a total CPU burst duration `time`, and a static integer
+`priority` (where smaller integers denote higher urgency). Execution proceeds in bounded slices of at most one
+**quantum** *q*: once a job consumes *q* clock units without finishing, the dispatcher preempts it and returns it to
+the ready set. We evaluate three classical arbitration policies:
 
-- **First come, first served (FCFS)** assigns the CPU to the job that has waited the longest.
-- **Shortest job first (SJF)** assigns the CPU to the job with the least remaining work.
-- **Priority scheduling** assigns the CPU to the job with the smallest priority number.
+- **First come, first served (FCFS):** selects the job that has resided longest in the ready set.
+- **Shortest job first (SJF):** selects the job with the smallest remaining CPU burst.
+- **Priority scheduling:** selects the job with the smallest priority number.
 
-Scheduling the four jobs `a` (time 5, priority 2), `b` (time 2, priority 3), `c` (time 3, priority 1), and `d` (time 4, priority 1) with a quantum of 2 produces completion order `b, c, d, a` under FCFS and SJF, and `c, d, a, b` under priority scheduling.
+Applied to the four-job workload `a` (burst 5, priority 2), `b` (burst 2, priority 3), `c` (burst 3, priority 1),
+and `d` (burst 4, priority 1) under quantum `q = 2`, FCFS and SJF both complete the jobs in order `b, c, d, a`,
+whereas priority scheduling completes them in order `c, d, a, b`.
 
-**The baseline approach.** Storing ready jobs in a `Vec` and scanning the entire vector before every slice takes O(n) time per selection, yielding O(s × n) total time for a schedule of `s` slices.
+**Baseline complexity.** Storing runnable jobs in an unsorted `Vec` and performing a linear scan prior to each
+dispatch requires O(*n*) comparisons per slice. Over a schedule spanning *s* total slices, dispatch overhead scales
+as O(*s* × *n*).
 
-**The heap approach.** Each policy maps a job to a single integer **rank**, and the scheduler stores ready jobs in a min-heap of `(rank, queued_at, index, time_left)` tuples. The `queued_at` field records the logical clock value at which the job entered the heap. When two jobs share the same rank, lexicographical tuple comparison breaks the tie in favor of the smaller `queued_at` value, so the job that has waited longer runs first. On each step, the scheduler pops the smallest tuple and runs that job for up to one quantum. If work remains, the scheduler pushes the job back with a recomputed rank and the current clock as its new `queued_at` timestamp. Each selection costs O(log n).
+**Unified heap architecture.** Projecting every policy onto a scalar **rank** allows a single binary min-heap of
+4-tuples `(rank, queued_at, index, time_left)` to serve all three disciplines. Because Rust compares tuples
+lexicographically from left to right (section 5.3.1), the heap enforces a strict total order: `rank` governs primary
+selection, `queued_at` (the logical clock instant at which the entry entered the heap) breaks ties in FIFO order so
+longer-waiting jobs run first, and the immutable input `index` breaks any residual tie deterministically. On each
+dispatch step, the scheduler extracts the minimum tuple in O(log *n*) time, advances the logical clock by
+`min(time_left, q)`, and reinserts unfinished jobs with an updated rank and `queued_at = clock`.
 
-### 31.1.1 A single rank for three policies
+### 31.1.1 Unifying three policies through a single rank
 
-`Policy::rank` computes a job's rank from its remaining time and priority:
+The `Policy::rank` method translates each discipline into an integer key computed from remaining burst and static
+priority:
 
-- `Policy::Fcfs` returns `0` for every job. Because all jobs tie on rank, the heap orders them by `queued_at` and then by input index. Reinserting a preempted job with the current clock places it behind every job already waiting, turning FCFS with a time quantum into **round-robin** scheduling (section 15.6).
-- `Policy::Sjf` returns the job's remaining time. Because the scheduler recomputes the rank on every reinsertion, a partially executed job competes using its remaining work rather than its initial duration. This preemptive form of SJF is **shortest remaining time first (SRTF)**.
-- `Policy::Priority` returns the job's priority. Jobs at the same priority level break ties by `queued_at`, so they alternate in round-robin order. In the example workload, jobs `c` and `d` (both priority 1) share the CPU until both finish.
+- **FCFS as round-robin (`Policy::Fcfs => 0`).** Assigning every job the constant rank `0` collapses primary key
+  ordering and delegates selection entirely to `(queued_at, index)`. When a job exhausts its quantum and re-enters
+  the heap stamped with the current clock, its timestamp strictly exceeds that of every waiting entry, placing it
+  at the tail of the ready order. Combining a constant rank with quantum preemption therefore reproduces
+  **round-robin** rotation (section 15.6) without a dedicated ring queue.
+- **Preemptive SJF as SRTF (`Policy::Sjf => remaining`).** Because the dispatcher recomputes `rank` on every
+  reinsertion using the decremented `time_left`, a partially executed job competes with its remaining burst rather
+  than its original length. This preemptive refinement is **shortest remaining time first (SRTF)**.
+- **Strict priority with fair intra-level rotation (`Policy::Priority => priority`).** Ranking by static priority
+  dispatches urgent jobs ahead of lower-priority work. Jobs sharing the same priority value tie on the first tuple
+  component and fall back to `queued_at`, cycling in round-robin fashion within their priority band. In our
+  workload, jobs `c` and `d` (both priority 1) alternate slices until both retire.
 
-### 31.1.2 Preemption at the end of a quantum
+### 31.1.2 Quantum preemption and turnaround analysis
 
-After popping a tuple, the scheduler compares the remaining time `left` against the quantum in a two-arm `match`:
+Upon popping `(.., index, left)` from the min-heap, the dispatcher compares `left` against `quantum` via
+`left.cmp(&quantum)` and branches across two exhaustive cases:
 
-1. `Ordering::Greater`: the job needs more than one quantum. The scheduler advances the clock by `quantum`, subtracts `quantum` from `left`, and pushes the job back with a fresh rank and the updated clock as `queued_at`.
-2. `Ordering::Less | Ordering::Equal`: the job finishes within this slice. The scheduler advances the clock by `left` and invokes the job's `run` closure to collect its result.
+1. **`Ordering::Greater` (preemption):** More than one quantum of work remains. The dispatcher advances `clock` by
+   `quantum`, decrements `left` by `quantum`, recomputes `policy.rank(left, job.priority)`, and pushes the updated
+   entry back onto the heap stamped with the new `clock`.
+2. **`Ordering::Less | Ordering::Equal` (completion):** The job finishes within the current slice. The dispatcher
+   advances `clock` by `left` and invokes `(jobs[index].run)()` to record its output.
 
-Under SJF, the eight pops unfold as follows. Notice how a partially executed job re-enters the heap with a lower rank:
+Tracing the eight heap extractions under `Policy::Sjf` demonstrates how recomputing the rank upon preemption keeps
+nearly finished jobs at the root of the heap:
 
 | Pop | Entry popped | Job | Clock after the slice | Entry pushed back |
 |---|---|---|---|---|
@@ -58,14 +96,17 @@ Under SJF, the eight pops unfold as follows. Notice how a partially executed job
 | 7 | `(3, 11, 0, 3)` | a | 13 | `(1, 13, 0, 1)` |
 | 8 | `(1, 13, 0, 1)` | a | 14 | a completes |
 
-At pop 3, `c` precedes `(4, 0, 3, 4)` for `d` because only 1 unit of `c` remains, dropping its rank to 1. Figure 31.1 plots the complete timelines for all three policies.
+At pop 3, `c` re-emerges ahead of `d`'s `(4, 0, 3, 4)` because its remaining work has dropped to 1, lowering its
+rank below `d`'s initial burst of 4. Figure 31.1 contrasts the resulting Gantt timelines across all three policies.
 
 <figure>
 <img src="figures/ch31-quantum-schedule.svg" alt="Three timelines from clock 0 to 14, one per policy. Policy::Fcfs runs a, b, c, d, a, c, d, a, and the jobs finish as b at 4, c at 11, d at 13 and a at 14. Policy::Sjf runs b, c, c, d, d, a, a, a, and the jobs finish as b at 2, c at 5, d at 9 and a at 14. Policy::Priority runs c, d, c, d, a, a, a, b, and the jobs finish as c at 5, d at 7, a at 12 and b at 14.">
 <figcaption><b>Figure 31.1</b> The slices executed under each policy with a quantum of 2. Under <code>Policy::Fcfs</code>, the jobs take turns in round-robin order.</figcaption>
 </figure>
 
-Because all four jobs arrive at clock 0, each job's completion time equals its **turnaround time**, the total interval from arrival to completion. The table below compares the mean turnaround times of the three schedules in Figure 31.1:
+A standard metric for batch scheduling efficiency is **turnaround time**, defined as
+`T_turnaround = T_completion - T_arrival`. Because every job in this static workload arrives at `t = 0`, each job's
+completion clock equals its turnaround time:
 
 | Policy | Completion times | Mean turnaround time |
 |---|---|---|
@@ -73,7 +114,11 @@ Because all four jobs arrive at clock 0, each job's completion time equals its *
 | SJF | b 2, c 5, d 9, a 14 | (2 + 5 + 9 + 14) / 4 = 7.5 |
 | Priority | c 5, d 7, a 12, b 14 | (5 + 7 + 12 + 14) / 4 = 9.5 |
 
-SJF achieves the lowest mean turnaround time, matching the classical result that running the shortest jobs first minimizes mean turnaround time when all jobs arrive together.
+SJF attains the minimal mean turnaround time (7.5), illustrating a classical theorem of scheduling theory: for any
+static job set arriving simultaneously, servicing jobs in non-decreasing order of processing time minimizes average
+turnaround time because every short job retires early rather than accumulating wait latency behind longer jobs.
+Round-robin yields the highest mean (10.5) because interleaving partial progress across all four jobs defers three
+of the four completions past clock 11, trading throughput efficiency for bounded interactive response time.
 
 ### 31.1.3 The program
 
@@ -90,27 +135,52 @@ sjf      ["b done", "c done", "d done", "a done"]
 priority ["c done", "d done", "a done", "b done"]
 ```
 
-Key implementation details:
+Notable structural properties of Listing 31.1:
 
-- Wrapping each 4-tuple in `Reverse` turns Rust's max-heap (`BinaryHeap`) into a min-heap that pops the smallest tuple first (section 5.3.2).
-- Every initial entry starts with `queued_at = 0`, so initial ties break by input index.
-- In `while let Some(Reverse((.., index, left))) = heap.pop()`, the `..` rest pattern discards the rank and `queued_at` fields, which are no longer needed after extraction.
-- The loop advances a logical clock without sleeping and invokes each job's closure once, during its final slice. Section 31.2 applies these same policies to jobs executing on real threads.
-- All jobs in Listing 31.1 arrive at clock 0. Under continuous arrivals of short or high-priority work, a long job under SJF or a low-priority job under priority scheduling can wait indefinitely, a condition called **starvation**.
+- **Min-heap inversion.** `std::collections::BinaryHeap` implements a max-heap; wrapping each 4-tuple in
+  `std::cmp::Reverse` reverses its `Ord` relation at zero runtime cost so `pop()` always yields the minimal tuple
+  (section 5.3.2).
+- **Deterministic initial ordering.** Seeding every entry with `queued_at = 0` ensures that ties among initial
+  entries break strictly by input `index`.
+- **Irrelevant-field elision.** Destructuring `while let Some(Reverse((.., index, left))) = heap.pop()` discards
+  the sort keys (`rank` and `queued_at`) via the `..` rest pattern once extraction has already used them.
+- **Logical-clock simulation.** The loop advances a virtual counter without blocking any OS thread, deferring
+  invocation of each job closure until its terminal slice. Section 31.2 transitions from simulated time to real
+  concurrent execution.
+- **Starvation under dynamic arrivals.** Because Listing 31.1 processes a closed static batch, every job eventually
+  terminates. In an open system receiving a steady stream of short or high-priority tasks, SJF and strict priority
+  scheduling can delay long or low-priority work indefinitely, a liveness failure known as **starvation**.
 
-**Complexity.** A job of length `t` requires `⌈t / q⌉` pops for a quantum `q`. A schedule of `s` slices runs in O(s log n) time, and the heap holds at most `n` entries at once.
+**Complexity.** A job of duration *t* undergoes `⌈t / q⌉` dispatches. Across *s* total slices and *n* jobs, the
+heap performs *s* removals and at most *s* insertions, requiring O(*s* log *n*) time and O(*n*) auxiliary space.
 
 ## 31.2 Workers that pop from a priority heap
 
-Section 31.1 simulated three scheduling policies on one CPU using a logical clock. This section applies the same `Policy` enum and ranking function to jobs running concurrently on OS threads. Before spawning any workers, the scheduler loads all jobs into a `Mutex<BinaryHeap<JobState>>`. A fixed cohort of worker threads then pops the lowest-ranked job in a loop and executes it. Two implementations follow: the first uses `.unwrap()`, and the second propagates lock errors as `Result` values.
+Replacing the simulated processor of section 31.1 with multiple OS worker threads shifts the problem from logical
+time-slicing to concurrent dispatch synchronization. Before spawning workers, the scheduler constructs a single
+`Mutex<BinaryHeap<JobState>>` populated with the entire batch. A fixed cohort of worker threads then loops,
+acquiring the heap mutex solely to extract the lowest-ranked job before executing that job concurrently without
+holding any lock. Two implementations follow: version 1 panics on poisoned mutexes via `.unwrap()`, while version 2
+surfaces lock failures through `Result` and `?`.
 
-**The problem.** Two worker threads execute the four jobs `a`, `b`, `c`, and `d` from section 31.1. Each job now sleeps for a real wall-clock duration of 50, 20, 30, or 40 ms before returning its name, while retaining its `time` (5, 2, 3, or 4) and `priority` (2, 3, 1, or 1). The scheduler collects job results in completion order.
+**Problem formulation.** Two worker threads execute the four jobs `a`, `b`, `c`, and `d` from section 31.1. Each
+closure now simulates real compute latency by sleeping for 50, 20, 30, or 40 ms before returning its identifier,
+while retaining its static metadata (`time` of 5, 2, 3, or 4 and `priority` of 2, 3, 1, or 1). The scheduler returns
+results in the chronological order in which workers complete them.
 
-**The design.** Unlike the thread pools in sections 18.2 through 18.7, which accept tasks dynamically over a channel, this scheduler processes a fixed batch known up front. Filling a `Mutex<BinaryHeap<JobState>>` once lets each worker exit as soon as the heap becomes empty. Each entry has the form `Reverse((rank, elapsed, index))`, where `elapsed` records time since `start` using `Instant`, a monotonic clock that never moves backward. Inserting jobs in index order preserves input order on rank ties. Spawning the workers inside `thread::scope` (section 16.1.3) lets every worker borrow `jobs`, `heap`, and `results` directly from the caller's stack frame without `Arc`, because `thread::scope` joins all spawned threads before returning.
+**Concurrency architecture.** Whereas the general-purpose thread pools of sections 18.2 through 18.7 ingest
+unbounded work streams over channels and block idle workers on condition variables, a fixed-batch scheduler knows
+its entire workload before startup. Consequently, an empty heap signals permanent termination rather than transient
+idleness. Each queue entry has type `Reverse((u32, Duration, usize))`, pairing `rank` with the elapsed duration
+since `start` measured via `std::time::Instant`, a monotonic clock immune to wall-clock adjustments. Populating
+entries in slice order establishes non-decreasing timestamps that preserve input order on rank ties. Launching
+workers inside `std::thread::scope` (section 16.1.3) establishes a lexical join barrier: because the scope blocks
+until every worker exits, workers borrow `jobs`, `heap`, and `results` directly from `schedule`'s stack frame
+without reference-counted `Arc` wrappers.
 
 ### 31.2.1 Version 1, with `unwrap`
 
-Listing 31.2 shows the complete `.unwrap()` implementation.
+Listing 31.2 presents the initial scoped-thread implementation using `.unwrap()`.
 
 <p class="listing"><b>Listing 31.2</b> 2 workers that pop jobs from a priority heap. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/multi_thread_job_scheduling.rs">src/bin/multi_thread_job_scheduling.rs</a></p>
 
@@ -125,31 +195,54 @@ sjf      ["b", "c", "d", "a"]
 priority ["c", "d", "b", "a"]
 ```
 
-On each iteration, a worker performs three steps:
+Each iteration of a worker loop executes three strictly separated phases:
 
-1. It locks `heap` and pops the smallest entry in `let next = heap.lock().unwrap().pop();`. Because the temporary `MutexGuard` drops at the semicolon, the worker releases the heap mutex before running the job (section 18.3).
-2. If the heap is empty, `let ... else` breaks out of the loop and terminates the worker thread.
-3. Otherwise, the worker invokes `(jobs[index].run)()` without holding any lock, then locks `results` briefly to append the output. As a result, `results` reflects actual completion order.
+1. **Bounded critical section for extraction.** The statement `let next = heap.lock().unwrap().pop();` acquires the
+   heap mutex, removes the highest-priority entry, and drops the temporary `MutexGuard` at the terminating
+   semicolon. Releasing the lock before executing the job preserves parallelism across workers, avoiding the
+   lock-serialization defect diagnosed in section 18.3.
+2. **Termination check.** When `next` is `None`, the `let ... else` statement exits the loop via `break`,
+   terminating the worker thread cleanly.
+3. **Lock-free execution and synchronized collection.** The worker invokes `(jobs[index].run)()` outside every
+   critical section, then briefly acquires `results` to push the return value. Because workers append upon
+   completion rather than dispatch, `results` records empirical completion order.
 
-The policy dictates dispatch order, while completion order depends on both job durations and the worker count (Figure 31.2). Under `Policy::Priority`, worker 1 claims `c` and worker 2 claims `d`. At 30 ms, worker 1 finishes `c` and starts `a` (priority 2). At 40 ms, worker 2 finishes `d` and starts `b` (priority 3), which finishes at 60 ms, 20 ms ahead of `a`. A lower-priority job can therefore finish earlier because priority governs only when a job starts.
+Dispatch order and completion order decouple immediately once multiple workers execute variable-duration tasks in
+parallel (Figure 31.2). Under `Policy::Priority`, the two workers claim `c` (priority 1, 30 ms) and `d`
+(priority 1, 40 ms) at `t = 0`. At 30 ms, worker 1 retires `c` and dispatches `a` (priority 2, 50 ms), running it
+until 80 ms. At 40 ms, worker 2 retires `d` and dispatches `b` (priority 3, 20 ms), which finishes at 60 ms, 20 ms
+before the higher-priority job `a`. Static priority constrains admission order, not retirement order.
 
 <figure>
 <img src="figures/ch31-heap-workers.svg" alt="Three timelines from 0 to 90 ms, each with 2 worker lanes. Policy::Fcfs pops a, b, c, d: worker 1 runs a from 0 to 50 and d from 50 to 90, worker 2 runs b from 0 to 20 and c from 20 to 50, and a and c both end at 50 ms. Policy::Sjf pops b, c, d, a: worker 1 runs b from 0 to 20 and d from 20 to 60, worker 2 runs c from 0 to 30 and a from 30 to 80, so the results are b, c, d, a. Policy::Priority pops c, d, a, b: worker 1 runs c from 0 to 30 and a from 30 to 80, worker 2 runs d from 0 to 40 and b from 40 to 60, so the results are c, d, b, a.">
 <figcaption><b>Figure 31.2</b> 2 workers and 4 jobs under each policy. The pop order follows the rank; the order of the results follows the completion times.</figcaption>
 </figure>
 
-Under `Policy::Fcfs`, jobs `a` and `c` both finish around 50 ms on separate workers, so whichever worker acquires the `results` mutex first appends its output first. Across 30 consecutive runs, the program printed `["b", "a", "c", "d"]` 27 times and `["b", "c", "a", "d"]` 3 times. SJF and priority scheduling produced identical output in all 30 runs because none of their completion times collide within a few milliseconds.
+Parallel completion times also introduce timing-dependent nondeterminism. Under `Policy::Fcfs`, worker 1 finishes
+`a` at roughly 50 ms while worker 2 finishes `b` (20 ms) followed by `c` (30 ms), arriving at the same 50 ms
+boundary. Whichever thread wins the `results` mutex appends first: across 30 consecutive runs, the binary produced
+`["b", "a", "c", "d"]` 27 times and `["b", "c", "a", "d"]` 3 times. Under SJF and priority scheduling, all
+completion timestamps are separated by at least 10 ms, yielding identical outputs across all 30 runs.
 
-Key implementation details:
+Type-system and synchronization invariants in Listing 31.2:
 
-- `F: Fn() -> T + Sync` is required because every worker invokes closures through the shared slice `&jobs`; a shared reference `&T` is `Send` only when `T` is `Sync` (section 16.1.4).
-- `T: Send` is required because worker threads produce `T` values that the caller consumes after joining.
-- After `thread::scope` returns, all workers have terminated, so `results.into_inner()` unwraps the vector directly without acquiring the mutex.
-- Each `.unwrap()` panics if its mutex is poisoned, which happens only when a thread panics while holding the guard (section 16.6).
+- **`F: Fn() -> T + Sync`.** Every worker invokes job closures through the shared immutable slice `&jobs`. Sending
+  a shared reference `&[Job<F>]` across thread boundaries requires `Job<F>: Sync`, which in turn requires `F: Sync`
+  (section 16.1.4).
+- **`T: Send`.** Each worker constructs a `T` on its own thread and moves it into the shared `results` vector that
+  the calling thread later consumes, requiring ownership transfer across threads.
+- **Zero-cost lock unwrapping.** Once `thread::scope` returns, static borrow rules guarantee no concurrent handle to
+  `results` survives. Calling `results.into_inner()` consumes the `Mutex` by value and retrieves the underlying
+  `Vec<T>` without invoking a lock syscall.
+- **Mutex poisoning.** Calling `.unwrap()` on `lock()` or `into_inner()` panics if the mutex is poisoned, a state
+  entered only when another thread panics while holding the guard (section 16.6).
 
 ### 31.2.2 Version 2: errors as values
 
-Version 2 replaces every `.unwrap()` with `?`. `schedule` now returns `ScheduledJob<T, String>`, a type alias for `Result<Vec<T>, String>`, and `main` returns `Result<(), String>` so it can propagate failures from each `schedule` call. The domain types, job array, and output remain identical to version 1; only `schedule` changes (Listing 31.3).
+Library code should report synchronization failures to callers rather than aborting through `.unwrap()`. Version 2
+introduces the alias `type ScheduledJob<T, E> = Result<Vec<T>, E>`, updates `schedule` to return
+`ScheduledJob<T, String>`, and changes `main` to return `Result<(), String>`. All domain types, job definitions, and
+console output stay unchanged; only `schedule` changes (Listing 31.3).
 
 <p class="listing"><b>Listing 31.3</b> <code>schedule</code> with errors returned as values (lines 35 to 76). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/job_scheduling_worker_with_error_propagation.rs">src/bin/job_scheduling_worker_with_error_propagation.rs</a></p>
 
@@ -164,20 +257,34 @@ sjf      ["b", "c", "d", "a"]
 priority ["c", "d", "b", "a"]
 ```
 
-Declaring each worker closure as `|| -> Result<(), String>` enables `?` inside the loop. Two events now terminate a worker:
+Annotating each worker closure with `-> Result<(), String>` enables fallible `?` propagation across the loop body,
+yielding two distinct exit paths:
 
-1. **A poisoned mutex:** `lock()` returns `Err(PoisonError)`. `map_err(|e| e.to_string())` formats the error as a `String`, and `?` returns it from the closure.
-2. **An empty heap:** `pop()` returns `None`, `ok_or("worker polled an empty queue")` turns it into an `Err(&str)`, and `?` converts the `&str` into a `String` via `From` before exiting the closure. Because the empty heap exits through `?`, the loop needs no explicit `break`.
+1. **Poisoned mutex.** `heap.lock()` or `results.lock()` returns `Err(PoisonError)`. Chaining
+   `.map_err(|e| e.to_string())?` translates the lock error into an owned `String` and aborts the worker loop.
+2. **Exhausted queue.** `pop()` yields `None`, which `.ok_or("worker polled an empty queue")` promotes to
+   `Err(&str)`. The `?` operator converts `&str` into `String` through `From` and exits the closure cleanly,
+   eliminating the need for an explicit `break`.
 
-Each `s.spawn` call returns a `ScopedJoinHandle`, which this version drops without joining explicitly. Although `thread::scope` still joins every worker before returning, dropping the handles discards each closure's `Result`. Inside the scope, a worker that exits on a poisoned lock looks identical to one that exits on an empty heap. After the scope finishes, `heap.into_inner()` checks whether the heap mutex was poisoned and propagates any `Err` via `?`; `results.into_inner()` performs the same check for the output vector.
+Notice a subtle interaction with `std::thread::scope`. Every call to `s.spawn` returns a `ScopedJoinHandle<Result<(), String>>`,
+which Listing 31.3 drops immediately. Although `thread::scope` guarantees that every spawned thread joins before the
+scope exits, dropping the handles discards each closure's `Result`. Inside the scope, a worker that terminates due
+to a poisoned mutex is therefore indistinguishable from one that drains an empty queue. Error reporting to the
+caller of `schedule` instead relies on the post-scope `heap.into_inner()` and `results.into_inner()` checks, which
+inspect both mutexes for poison and propagate any `Err` through `?`.
 
-Neither version catches panics raised inside a job closure. If a scoped worker panics and the caller does not join its handle manually, `thread::scope` resumes the panic on the calling thread once all workers have exited.
+Neither version intercepts panics originating inside a user job closure. When a scoped worker panics and its
+`ScopedJoinHandle` is not manually joined, `thread::scope` waits for all sibling workers to finish and then resumes
+the panic on the calling thread.
 
-**Complexity.** `collect` builds the heap from `n` jobs in O(n) time, and each of the `n` pops takes O(log n) time under the heap mutex. With `w` workers and jobs of equal duration `d`, the batch finishes in roughly `⌈n / w⌉ × d`.
+**Complexity.** Building the binary heap via `collect` takes O(*n*) time using Floyd's linear-time heapification,
+and each of the *n* extractions costs O(log *n*) under the heap lock. Given *w* workers and uniform job duration
+*d*, wall-clock completion time approaches `⌈n / w⌉ × d`, bounded by lock contention when *d* approaches the cost
+of mutex acquisition.
 
 ## 31.3 The complete files
 
-Listing 31.4 presents the complete source of version 2, including the job list in `main`.
+Listing 31.4 reproduces version 2 in full, including `main` and the four-job benchmark workload.
 
 <p class="listing"><b>Listing 31.4</b> Version 2, with errors returned as values. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/job_scheduling_worker_with_error_propagation.rs">src/bin/job_scheduling_worker_with_error_propagation.rs</a></p>
 
@@ -189,17 +296,30 @@ Listing 31.4 presents the complete source of version 2, including the job list i
 
 ## Summary
 
-- A scheduling policy reduces to a single numeric rank in a min-heap of `(rank, queued_at, index, time_left)` tuples. With a time quantum, a constant rank of `0` yields round-robin, remaining time yields shortest remaining time first, and static priority yields priority scheduling.
-- Reinserting a preempted job with the current clock as `queued_at` places it behind every waiting job of equal rank.
-- When all jobs arrive together, running the shortest jobs first minimizes mean turnaround time: 7.5 for the four jobs in section 31.1, versus 10.5 for round-robin and 9.5 for priority scheduling.
-- Workers in `thread::scope` can share a `Mutex<BinaryHeap<_>>` safely when each worker holds the lock only while popping. The policy fixes dispatch order, while job durations and worker count govern completion order.
-- Errors returned from a scoped worker closure are discarded unless the caller retains and joins its `ScopedJoinHandle`.
+- Projecting scheduling policies onto a scalar rank unifies FCFS, SJF/SRTF, and priority scheduling over a single
+  binary min-heap of `(rank, queued_at, index, time_left)` tuples.
+- Under quantum-bounded preemption, stamping reinserted jobs with the current logical clock places them behind
+  every waiting entry of equal rank, deriving round-robin rotation directly from FCFS.
+- For a static simultaneous arrival set, servicing the shortest remaining burst first minimizes mean turnaround
+  time (7.5 versus 9.5 for priority scheduling and 10.5 for round-robin on the section 31.1 workload).
+- Scoped worker threads can share a `Mutex<BinaryHeap<_>>` concurrently when each worker confines its critical
+  section to the pop statement; policy dictates dispatch order, while job durations and worker count dictate
+  completion order.
+- Dropping a `ScopedJoinHandle` inside `thread::scope` discards the worker closure's `Result`; reporting
+  individual worker errors requires collecting and joining every handle explicitly.
 
 </div>
 
 ## Exercises
 
-1. Add arrival times to the jobs in Listing 31.1 so that each job enters the heap only when the clock reaches its arrival time. Print the turnaround time of every job under each policy.
-2. Submit a new job of length 1 on every slice and verify that a job of length 8 starves under `Policy::Sjf`. Add **aging** by subtracting each job's wait time from its rank, and verify that the length-8 job finishes.
-3. Run Listing 31.2 with 1, 2, and 4 workers and record the completion order under each policy. Explain each result with a timeline like Figure 31.2.
-4. Collect the `ScopedJoinHandle` of every worker in Listing 31.3 and join each handle so `schedule` returns the first worker error. Return `Ok(())` when the heap is empty so normal termination no longer surfaces as an error.
+1. Extend `Job` in Listing 31.1 with an explicit arrival timestamp so jobs enter the min-heap only once the logical
+   clock reaches their arrival time. Compute each job's turnaround time (`completion - arrival`) and compare mean
+   turnaround across all three policies.
+2. Construct an arrival stream that injects a unit-length job (`time = 1`) on every slice and demonstrate
+   indefinite starvation of a length-8 job under `Policy::Sjf`. Implement **aging** by subtracting accrued waiting
+   time from each job's rank, and verify that the length-8 job completes.
+3. Run Listing 31.2 with `workers` set to 1, 2, and 4 under all three policies. Record the completion sequences and
+   sketch the corresponding multi-lane execution timelines modeled on Figure 31.2.
+4. Collect every `ScopedJoinHandle` returned by `s.spawn` in Listing 31.3, return `Ok(())` on an empty heap so
+   normal worker exit is distinct from failure, and join all handles so `schedule` propagates the first worker
+   error directly.

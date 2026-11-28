@@ -712,30 +712,39 @@ The [complete tree iterator program](#tree-iterator-complete-program) below incl
 
 ### 11.7.3 An arena tree with `iter::from_fn`
 
-You can write the same preorder traversal without defining an iterator struct. An **arena** tree stores every
-node in a single `Vec` and refers to each child by its index in that vector, so each node holds
-`children: Vec<usize>` instead of nested child nodes. In the example below, node `0` is the root with children
-`1` and `2`, and preorder traversal visits `Root`, `Left Child`, and `Right Child`.
+Pointer-linked trees allocate or nest child structures directly inside parent nodes, coupling graph topology to
+ownership lifetimes. An **arena** representation decouples storage from topology by packing every `Node<T>` into
+a single contiguous `Vec<Node<T>>` and encoding parent-child edges as integer offsets (`usize`) into that backing
+vector. Rather than owning recursive child subtrees, each node stores `children: Vec<usize>`, and the tree tracks
+its entry point via `root: Option<usize>`.
+
+This flat layout pairs naturally with `std::iter::from_fn`, which synthesizes a stateful `Iterator` from a single
+closure without requiring a nominal `TreeIter` struct or a manual `impl Iterator` block. For the three-node tree
+rooted at index `0` with children `1` and `2`, preorder traversal yields `Root`, `Left Child`, and `Right Child`:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/arena_tree_iterator.rs:1:29}}
 ```
 
-`std::iter::from_fn` builds an iterator directly from a closure. Each call to `next` invokes the closure once
-and returns its `Option` result (`Some(item)` or `None`) to the caller. The `move` keyword transfers ownership
-of `stack` into the closure, encapsulating all traversal state without a dedicated `TreeIter` struct or manual
-`impl Iterator` block. Because the closure also captures `&self`, the returned iterator cannot outlive the
-borrow of the tree.
+Three standard-library mechanisms make `dfs_iter` concise while preserving Rust's borrowing guarantees:
 
-The iterator initializes its stack with `self.root.into_iter().collect()`. Because `Option` implements
-`IntoIterator` and yields zero or one element, an empty tree starts with an empty stack while a non-empty tree
-starts with `[0]`. Since `Option<usize>` is `Copy`, reading `self.root` copies the root index and leaves the
-tree untouched.
+- **Closure-captured iterator state.** `std::iter::from_fn` accepts any `FnMut() -> Option<T>` closure and invokes
+  it on each call to `Iterator::next`. Applying `move` transfers ownership of the local `stack: Vec<usize>` into
+  the closure's anonymous environment while capturing the shared reference `self: &Tree<T>` by value (a cheap
+  pointer copy). Lifetime elision on the return signature `impl Iterator<Item = &Node<T>>` binds the returned
+  iterator to the borrow of `self`, guaranteeing statically that the arena cannot be mutated or dropped while
+  traversal is active.
+- **Zero-or-one initialization via `Option::into_iter`.** `Option<T>` implements `IntoIterator` as a collection of
+  cardinality zero or one. Because `Option<usize>` implements `Copy`, `self.root.into_iter().collect()` copies the
+  root handle out of `&self` without moving from the tree, seeding `stack` with `[]` for an empty tree or `[0]`
+  when a root exists.
+- **Implicit copying through `Extend<&T>`.** Iterating over `node.children.iter().rev()` yields `&usize`
+  references, whereas `stack` holds owned `usize` indices. `stack.extend(...)` compiles without an explicit
+  `.copied()` adapter because the standard library implements `Extend<&T>` for `Vec<T>` whenever `T: Copy`. As in
+  section 11.7.1, reversing the child slice places the leftmost child at the top of the LIFO stack so that the next
+  `pop()` descends left-to-right.
 
-Although `node.children.iter()` yields `&usize` references while `stack` is a `Vec<usize>`, `stack.extend(...)`
-compiles directly because the standard library implements `Extend<&T>` for `Vec<T>` whenever `T: Copy`,
-copying each index into the stack. As in section 11.7.1, reversing the slice with `rev()` pushes children from
-right to left so that the leftmost child sits at the top of the stack and is popped first.
+Tracing `dfs_iter` over the sample arena illustrates the stack transitions across all four calls to `next`:
 
 | Call to `next` | Stack before | Popped | Pushed | Stack after | Yields |
 |---|---|---|---|---|---|
@@ -744,13 +753,16 @@ right to left so that the leftmost child sits at the top of the stack and is pop
 | 3 | `[2]` | 2 | nothing | `[]` | `Right Child` |
 | 4 | `[]` | nothing | nothing | `[]` | `None` |
 
-In this representation, the stack stores 8-byte `usize` indices on 64-bit targets instead of borrowed node
-references. The arena packs all `Node<T>` structs into a single contiguous allocation, although each node's
-`children` vector remains a separate heap allocation. Traversal time stays O(n), and a wide tree can still
-hold up to O(n) pending indices on the stack.
+**Memory layout and complexity.** Storing `usize` handles on the traversal stack matches the 8-byte width of a
+shared reference on 64-bit architectures, but the arena places all `Node<T>` headers contiguously in a single
+allocation, improving spatial locality during sequential index lookups. Each node's `children: Vec<usize>`
+remains an independent heap allocation (production graph engines flatten those edge lists into a single
+compressed-sparse-row array when eliminating per-node allocations). Asymptotically, every node is pushed and
+popped once, giving O(*n*) total traversal time and O(*n*) worst-case auxiliary stack space on shallow, high-fanout
+trees.
 
-The [complete arena tree iterator program](#arena-tree-iterator-complete-program) below includes the example
-input and `main`.
+The [complete arena tree iterator program](#arena-tree-iterator-complete-program) below contains the full example
+and `main`.
 
 ## 11.8 Finding the lowest common ancestor
 
@@ -996,8 +1008,8 @@ $ cargo run --bin arena_tree_iterator
   independent of dictionary cardinality.
 
 - A borrowed stack turns preorder traversal into an iterator without cloning node values.
-- An arena tree stores nodes contiguously and links children by index; `iter::from_fn` wraps a stack-owning
-  closure into a preorder iterator without a custom iterator type.
+- Packing nodes into a flat `Vec` arena decouples tree topology from pointer lifetimes, and `iter::from_fn`
+  encapsulates a stack of `usize` indices inside a closure to produce a preorder iterator without a custom type.
 - Lowest-common-ancestor searches need a stated target identity rule and assume both targets are present.
 
 </div>
@@ -1012,5 +1024,5 @@ $ cargo run --bin arena_tree_iterator
 4. Add `words_with_prefix(&self, prefix: &str) -> Vec<String>` to the trie.
 5. Reverse the iterator child insertion order and predict the resulting traversal.
 6. Pass one absent target to each ancestor function. Extend the result to record whether both targets were found.
-7. Add a `bfs_iter` method to the arena tree in section 11.7.3 using `iter::from_fn` and a `VecDeque<usize>`.
-   Print the visit order for a tree of depth 3.
+7. Implement a breadth-first `bfs_iter(&self)` method on the arena tree of section 11.7.3 using `iter::from_fn`
+   and a `VecDeque<usize>`. Verify the level-order traversal on a tree of depth 3.
