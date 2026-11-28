@@ -69,6 +69,10 @@
 
 - [Scheduling jobs by policy](ch31-scheduling.md)
 
+# Part 12: Sweep lines
+
+- [Sweep-line algorithms](ch32-sweep-line.md)
+
 ---
 
 [Appendix A. The Rust cheat sheet](appendix-a-cheatsheet.md)
